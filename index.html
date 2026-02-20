@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ConnectChat - P2P Direct</title>
+    <title>ConnectChat - Simple but Safe</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -25,7 +25,7 @@
         .unread-indicator { width: 10px; height: 10px; background-color: #3b82f6; border-radius: 9999px; }
         .delete-chat-btn { opacity: 0; transition: opacity 0.2s; }
         .chat-item:hover .delete-chat-btn { opacity: 1; }
-        .msg-status-icon { font-size: 10px; margin-left: 4px; opacity: 0.6; }
+        .read-receipt-avatar { width: 18px; height: 18px; border-radius: 6px; font-size: 10px; font-weight: 900; display: flex; align-items: center; justify-content: center; margin-top: 4px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .editable:hover { cursor: pointer; filter: brightness(0.95); }
         .editable::after { content: 'Click to edit'; position: absolute; bottom: -18px; right: 0; font-size: 9px; opacity: 0; transition: opacity 0.2s; color: #94a3b8; }
         .editable:hover::after { opacity: 1; }
@@ -42,13 +42,28 @@
                 <i class="fas fa-comment-dots text-blue-600 text-5xl"></i>
             </div>
             <h1 class="text-3xl font-bold mb-3">Welcome to Connect</h1>
-            <p class="text-gray-500 mb-8">Choose a unique handle for your P2P messages.</p>
-            <div class="relative mb-8 text-left">
-                <input type="text" id="my-handle-input" placeholder="e.g. Maverick" class="w-full py-4 px-2 g-input text-xl placeholder-gray-300">
+            <p class="text-gray-500 mb-8">Choose a unique handle for your messages.</p>
+            
+            <div id="new-user-section" class="space-y-4">
+                <div class="relative text-left mb-6">
+                    <input type="text" id="my-handle-input" placeholder="Enter a new handle..." class="w-full py-4 px-2 g-input text-xl placeholder-gray-300">
+                </div>
+                
+                <div class="flex flex-col gap-3">
+                    <button id="set-identity-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-semibold shadow-xl transition-all active:scale-95">
+                        Start Chatting
+                    </button>
+
+                    <div id="restore-section" class="hidden">
+                        <button id="restore-identity-btn" class="w-full bg-gray-900 hover:bg-black text-white py-4 rounded-2xl font-semibold transition-all active:scale-95 flex items-center justify-center gap-3 shadow-lg">
+                            <i class="fas fa-user-check text-blue-400"></i>
+                            <span>Continue as <span id="restore-handle-name" class="text-blue-400 font-black"></span></span>
+                        </button>
+                    </div>
+                </div>
+                
+                <p id="restore-hint" class="hidden mt-4 text-[11px] text-gray-400">Handle detected in your browser storage.</p>
             </div>
-            <button id="set-identity-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-semibold shadow-xl transition-all active:scale-95">
-                Start Chatting
-            </button>
         </div>
     </div>
 
@@ -108,7 +123,7 @@
                         <i class="fas fa-comment-slash text-4xl text-gray-200"></i>
                     </div>
                     <h2 class="text-xl font-bold mb-2 text-gray-800">Your Inbox</h2>
-                    <p class="max-w-xs text-sm leading-relaxed text-gray-400">You can send messages even when friends are offline. They'll sync when both are back.</p>
+                    <p class="max-w-xs text-sm leading-relaxed text-gray-400">Connect to start chatting. Your data stays on your device.</p>
                 </div>
 
                 <div id="active-chat-content" class="hidden flex-1 flex flex-col overflow-hidden">
@@ -117,7 +132,7 @@
                             <div id="target-avatar" class="w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center text-sm font-black uppercase">?</div>
                             <div>
                                 <h2 id="target-handle-header" class="font-bold text-gray-900 capitalize-handle truncate max-w-[250px]">...</h2>
-                                <p id="target-status" class="text-[10px] font-bold uppercase tracking-widest">Offline Support Enabled</p>
+                                <p id="target-status" class="text-[10px] font-bold uppercase tracking-widest">End-to-End Encryption</p>
                             </div>
                         </div>
                         <button class="p-2 text-gray-400 hover:text-gray-600" id="back-btn"><i class="fas fa-chevron-left"></i></button>
@@ -149,7 +164,6 @@
         </div>
     </div>
 
-    <!-- Edit Message Modal -->
     <div id="edit-modal-overlay" class="fixed inset-0 bg-slate-900/40 z-[220] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl relative border border-gray-100">
             <h3 class="text-2xl font-bold mb-2 text-gray-900">Edit Message</h3>
@@ -164,7 +178,6 @@
     <div id="change-handle-modal" class="fixed inset-0 bg-slate-900/40 z-[120] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl relative border border-gray-100">
             <h3 class="text-2xl font-bold mb-2 text-gray-900 text-center">Update Identity</h3>
-            <p class="text-sm text-gray-500 mb-8 text-center">Existing chats and local messages are preserved.</p>
             <input type="text" id="new-handle-input" placeholder="New handle" class="w-full py-4 g-input text-lg outline-none font-medium mb-8">
             <div class="flex items-center gap-3">
                 <button id="change-handle-cancel" class="flex-1 py-3.5 text-gray-500 hover:bg-gray-50 rounded-xl font-bold text-sm">Cancel</button>
@@ -196,10 +209,8 @@
         let connections = {}; 
         let activeChatId = null;
         let myHandle = localStorage.getItem('p2p_handle');
-        let mutualVerified = {}; 
         let editingMsgId = null;
 
-        // Message: { id, sender: 'me'|'them', text, timestamp, synced: bool, edited: bool }
         let messageHistory = JSON.parse(localStorage.getItem('p2p_history')) || {};
         let unreadCounts = JSON.parse(localStorage.getItem('p2p_unread')) || {};
 
@@ -222,7 +233,14 @@
             if(pct >= 100) setTimeout(() => bar.style.width = '0%', 500);
         };
 
-        if (myHandle) initPeer(myHandle);
+        window.onload = () => {
+            if (myHandle) {
+                document.getElementById('restore-section').classList.remove('hidden');
+                document.getElementById('restore-hint').classList.remove('hidden');
+                document.getElementById('restore-handle-name').innerText = `@${myHandle}`;
+                document.getElementById('my-handle-input').focus();
+            }
+        };
 
         document.getElementById('set-identity-btn').onclick = () => {
             const input = document.getElementById('my-handle-input').value.trim().toLowerCase();
@@ -232,12 +250,15 @@
             initPeer(myHandle);
         };
 
+        document.getElementById('restore-identity-btn').onclick = () => {
+            if (myHandle) initPeer(myHandle);
+        };
+
         function initPeer(id) {
             updateStatusUI(30);
             if (peer) {
                 Object.values(connections).forEach(c => c.close());
                 connections = {};
-                mutualVerified = {};
                 peer.destroy();
                 peer = null;
             }
@@ -277,44 +298,58 @@
             
             conn.on('open', () => {
                 connections[remoteHandle] = conn;
-                
-                // Handshake + Sync unsent messages
-                const amIAddingThem = !!messageHistory[remoteHandle];
                 const unsynced = (messageHistory[remoteHandle] || []).filter(m => m.sender === 'me' && !m.synced);
                 
                 conn.send({ 
                     type: 'handshake', 
-                    hasAdded: amIAddingThem, 
                     from: myHandle,
                     syncMessages: unsynced
                 });
                 
                 updateChatList();
-                if (activeChatId === remoteHandle) openChat(remoteHandle); 
+                if (activeChatId === remoteHandle) renderMessages(); 
             });
 
             conn.on('data', (data) => {
                 if (data.type === 'handshake') {
-                    mutualVerified[remoteHandle] = data.hasAdded;
                     if (!messageHistory[remoteHandle]) {
                         messageHistory[remoteHandle] = [];
                         unreadCounts[remoteHandle] = 0;
                     }
-                    // Handle incoming offline messages
                     if (data.syncMessages && data.syncMessages.length > 0) {
                         data.syncMessages.forEach(m => {
                             if (!messageHistory[remoteHandle].find(ex => ex.id === m.id)) {
                                 handleIncomingMessage(remoteHandle, m.text, m.id);
                             }
                         });
+                        conn.send({ type: 'sync-ack', ids: data.syncMessages.map(m => m.id) });
                     }
                     saveState();
-                    if (activeChatId === remoteHandle) openChat(remoteHandle);
                     updateChatList();
+                    if (activeChatId === remoteHandle) renderMessages();
+                }
+
+                if (data.type === 'sync-ack') {
+                    data.ids.forEach(id => {
+                        const msg = messageHistory[remoteHandle].find(m => m.id === id);
+                        if (msg) msg.synced = true;
+                    });
+                    if (activeChatId === remoteHandle) renderMessages();
+                    saveState();
                 }
                 
                 if (data.type === 'chat') {
                     handleIncomingMessage(remoteHandle, data.text, data.id);
+                    conn.send({ type: 'receipt', id: data.id });
+                }
+
+                if (data.type === 'receipt') {
+                    const msg = messageHistory[remoteHandle].find(m => m.id === data.id);
+                    if (msg) {
+                        msg.synced = true;
+                        if (activeChatId === remoteHandle) renderMessages();
+                        saveState();
+                    }
                 }
 
                 if (data.type === 'edit') {
@@ -330,13 +365,11 @@
 
             conn.on('close', () => {
                 delete connections[remoteHandle];
-                delete mutualVerified[remoteHandle];
                 updateChatList();
-                if(activeChatId === remoteHandle) openChat(remoteHandle);
+                if(activeChatId === remoteHandle) renderMessages();
             });
         }
 
-        // Handle Change Logic
         document.getElementById('user-avatar-btn').onclick = (e) => { 
             e.stopPropagation(); 
             document.getElementById('profile-dropdown').classList.toggle('show'); 
@@ -354,13 +387,17 @@
             myHandle = newHandle;
             saveState();
             document.getElementById('change-handle-modal').classList.add('hidden');
-            showToast("Updating identity...");
             initPeer(myHandle);
         };
 
         document.getElementById('change-handle-cancel').onclick = () => document.getElementById('change-handle-modal').classList.add('hidden');
+        document.getElementById('delete-account-btn').onclick = () => document.getElementById('confirm-delete-modal').classList.remove('hidden');
+        document.getElementById('confirm-delete-cancel').onclick = () => document.getElementById('confirm-delete-modal').classList.add('hidden');
+        document.getElementById('confirm-delete-final').onclick = () => {
+            localStorage.clear();
+            location.reload();
+        };
 
-        // Chat Management
         document.getElementById('new-chat-trigger').onclick = () => {
             document.getElementById('modal-overlay').classList.remove('hidden');
             document.getElementById('search-input').focus();
@@ -378,7 +415,6 @@
                 unreadCounts[target] = 0;
                 saveState();
             }
-            showToast(`Adding ${target}...`);
             attemptConnection(target);
             updateChatList();
         };
@@ -402,7 +438,7 @@
                     </div>
                     <div class="flex-1 truncate">
                         <div class="text-[13px] text-gray-900 capitalize-handle font-bold">${h}</div>
-                        <div class="text-[10px] opacity-60 font-bold uppercase tracking-tighter">${isOnline ? 'Online' : 'Offline Mode'}</div>
+                        <div class="text-[10px] opacity-60 font-bold uppercase tracking-tighter">${isOnline ? 'Connected' : 'Offline'}</div>
                     </div>
                     ${unread && !isActive ? '<div class="unread-indicator"></div>' : ''}
                     <button class="delete-chat-btn p-2 text-gray-300 hover:text-red-500" onclick="deleteConversation('${h}', event)">
@@ -450,23 +486,36 @@
             container.innerHTML = '';
             const history = messageHistory[activeChatId] || [];
             
+            // Find the VERY LAST message that was synced/read by the other person
+            let lastSyncedId = null;
+            for (let i = history.length - 1; i >= 0; i--) {
+                if (history[i].sender === 'me' && history[i].synced) {
+                    lastSyncedId = history[i].id;
+                    break;
+                }
+            }
+
             history.forEach((m, idx) => {
                 const isMe = m.sender === 'me';
                 const isGrouped = idx > 0 && history[idx-1].sender === m.sender;
                 const div = document.createElement('div');
                 div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} ${isGrouped ? 'mt-1' : 'mt-4'}`;
                 
-                const statusIcon = isMe ? (m.synced ? '<i class="fas fa-check-double msg-status-icon text-blue-300"></i>' : '<i class="fas fa-clock msg-status-icon"></i>') : '';
                 const editedLabel = m.edited ? '<span class="text-[9px] opacity-50 ml-1 italic">(edited)</span>' : '';
+                const isLastRead = m.id === lastSyncedId;
 
                 div.innerHTML = `
                     <div class="message-bubble px-4 py-2 rounded-2xl text-[14px] ${isMe ? 'bg-blue-600 text-white rounded-tr-none shadow-blue-100 editable' : 'bg-gray-100 text-gray-800 rounded-tl-none shadow-sm'} shadow-md" data-id="${m.id}">
                         <span>${m.text}</span>
-                        <div class="flex items-center justify-end mt-1">
+                        <div class="flex items-center justify-end">
                             ${editedLabel}
-                            ${statusIcon}
                         </div>
                     </div>
+                    ${isLastRead ? `
+                        <div class="read-receipt-avatar bg-gray-900 text-white uppercase" title="Read by ${activeChatId}">
+                            ${activeChatId[0]}
+                        </div>
+                    ` : ''}
                 `;
 
                 if (isMe) {
@@ -495,12 +544,8 @@
             if (msg) {
                 msg.text = newText;
                 msg.edited = true;
-                
                 const conn = connections[activeChatId];
-                if (conn && conn.open) {
-                    conn.send({ type: 'edit', id: editingMsgId, text: newText });
-                }
-                
+                if (conn && conn.open) conn.send({ type: 'edit', id: editingMsgId, text: newText });
                 saveState();
                 renderMessages();
             }
@@ -510,7 +555,7 @@
 
         function handleIncomingMessage(handle, text, id) {
             if (!messageHistory[handle]) messageHistory[handle] = [];
-            if (messageHistory[handle].find(m => m.id === id)) return; // Prevent duplicates
+            if (messageHistory[handle].find(m => m.id === id)) return;
 
             messageHistory[handle].push({ 
                 id: id || Date.now() + Math.random(),
@@ -525,7 +570,6 @@
                 renderMessages();
             } else {
                 unreadCounts[handle] = (unreadCounts[handle] || 0) + 1;
-                showToast(`New message from ${handle.toUpperCase()}`);
             }
             saveState();
             updateChatList();
@@ -539,14 +583,14 @@
 
             const msgId = Date.now() + Math.random();
             const conn = connections[activeChatId];
-            const isOnline = (conn && conn.open && mutualVerified[activeChatId]);
+            const isOnline = (conn && conn.open);
 
             const newMsg = {
                 id: msgId,
                 sender: 'me',
                 text,
                 timestamp: Date.now(),
-                synced: isOnline,
+                synced: false,
                 edited: false
             };
 
@@ -554,8 +598,6 @@
             
             if (isOnline) {
                 conn.send({ type: 'chat', text, id: msgId });
-            } else {
-                showToast("Recipient offline. Message will sync later.");
             }
 
             saveState();
