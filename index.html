@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ConnectChat - P2P Direct</title>
+    <title>ConnectChat</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -20,6 +20,9 @@
         .chat-item.active { background-color: #f0f7ff; color: #1a73e8; border-left: 4px solid #1a73e8; }
         .chat-item { border-left: 4px solid transparent; }
         .capitalize-handle { text-transform: capitalize; }
+        #profile-dropdown { transition: all 0.2s ease-out; transform: translateY(-10px); opacity: 0; pointer-events: none; }
+        #profile-dropdown.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
+        .unread-indicator { width: 8px; height: 8px; background-color: #3b82f6; border-radius: 9999px; }
     </style>
 </head>
 <body class="text-gray-900">
@@ -31,7 +34,7 @@
     <div id="identity-overlay" class="fixed inset-0 z-[90] bg-white flex flex-col items-center justify-center p-6">
         <div class="max-w-md w-full text-center">
             <div class="mb-8 inline-block p-6 bg-blue-50 rounded-3xl">
-                <i class="fas fa-user-astronaut text-blue-600 text-5xl"></i>
+                <i class="fas fa-comment-dots text-blue-600 text-5xl"></i>
             </div>
             <h1 class="text-3xl font-bold mb-3">Welcome to Connect</h1>
             <p class="text-gray-500 mb-8">Choose a unique handle. This is your digital address for direct P2P messaging.</p>
@@ -50,20 +53,28 @@
         <header class="h-16 border-b border-gray-100 flex items-center justify-between px-6 shrink-0 bg-white">
             <div class="flex items-center gap-4">
                 <div class="bg-blue-600 w-8 h-8 rounded-lg flex items-center justify-center shadow-md shadow-blue-200">
-                    <i class="fas fa-paper-plane text-white text-sm"></i>
+                    <i class="fas fa-comment text-white text-sm"></i>
                 </div>
                 <span class="text-xl font-bold tracking-tight text-gray-900">ConnectChat</span>
             </div>
             
-            <div class="flex items-center gap-4 group">
+            <div class="flex items-center gap-4 relative">
                 <div class="text-right hidden sm:block">
                     <p id="display-my-handle" class="text-sm font-bold text-gray-900 capitalize-handle">...</p>
                     <div class="flex items-center justify-end gap-1.5">
                         <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                        <span class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Live Status</span>
+                        <span class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter" id="global-status-text">Live Status</span>
                     </div>
                 </div>
-                <div id="user-avatar" class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold uppercase border border-blue-200 cursor-default">?</div>
+                <button id="user-avatar-btn" class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold uppercase border border-blue-200 cursor-pointer hover:bg-blue-200 transition-colors">?</button>
+                
+                <!-- Profile Dropdown -->
+                <div id="profile-dropdown" class="absolute right-0 top-14 w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-[150]">
+                    <button id="delete-account-btn" class="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 transition-colors flex items-center gap-3 text-sm font-semibold">
+                        <i class="fas fa-user-slash text-xs"></i>
+                        <span>Delete Account</span>
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -86,7 +97,7 @@
             <main id="chat-window" class="hidden md:flex flex-1 flex-col bg-white relative">
                 <div id="no-chat-selected" class="flex-1 flex flex-col items-center justify-center text-gray-500 p-10 text-center">
                     <div class="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6">
-                        <i class="fas fa-wind text-4xl text-gray-200"></i>
+                        <i class="fas fa-comment-slash text-4xl text-gray-200"></i>
                     </div>
                     <h2 class="text-xl font-bold mb-2 text-gray-800">Your Inbox is Empty</h2>
                     <p class="max-w-xs text-sm leading-relaxed text-gray-400">Start a "New Chat" and enter your friend's handle to link up directly.</p>
@@ -130,6 +141,21 @@
         </div>
     </div>
 
+    <!-- Confirmation Modal for Delete -->
+    <div id="confirm-delete-modal" class="fixed inset-0 bg-slate-900/40 z-[210] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl relative border border-gray-100 text-center">
+            <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+            </div>
+            <h3 class="text-xl font-bold mb-2 text-gray-900">Delete Account?</h3>
+            <p class="text-sm text-gray-500 mb-8">This will remove your handle and clear your session. Your messages are stored locally and will be lost.</p>
+            <div class="flex items-center gap-3">
+                <button id="confirm-delete-cancel" class="flex-1 py-3.5 text-gray-500 hover:bg-gray-50 rounded-xl font-bold text-sm transition">Keep It</button>
+                <button id="confirm-delete-final" class="flex-1 py-3.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold shadow-lg shadow-red-100 text-sm transition">Delete</button>
+            </div>
+        </div>
+    </div>
+
     <div id="status-toast" class="fixed bottom-0 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-8 py-4 rounded-2xl shadow-2xl text-sm z-[150] flex items-center gap-3">
         <span id="toast-msg">Notice</span>
     </div>
@@ -138,6 +164,7 @@
         let peer = null;
         let connections = {}; 
         let messageHistory = {}; 
+        let unreadCounts = {}; // Track unread status
         let myHandle = localStorage.getItem('p2p_handle');
         let activeChatId = null;
 
@@ -168,6 +195,11 @@
 
         function initPeer(id) {
             updateStatusUI(30);
+            
+            if (peer) {
+                peer.destroy();
+            }
+
             const peerId = 'cc-p2p-' + id;
             peer = new Peer(peerId);
 
@@ -175,7 +207,8 @@
                 updateStatusUI(100);
                 document.getElementById('identity-overlay').classList.add('hidden');
                 document.getElementById('display-my-handle').innerText = id;
-                document.getElementById('user-avatar').innerText = id[0];
+                document.getElementById('user-avatar-btn').innerText = id[0];
+                document.getElementById('global-status-text').innerText = "Live Status";
                 updateChatList();
             });
 
@@ -184,24 +217,42 @@
             });
 
             peer.on('error', (err) => {
-                console.error(err);
+                console.error('Peer Error:', err.type, err.message);
                 if (err.type === 'unavailable-id') {
-                    showToast("That handle is already online.");
+                    showToast("Handle '"+id+"' is already online elsewhere.");
                     document.getElementById('identity-overlay').classList.remove('hidden');
+                    document.getElementById('global-status-text').innerText = "Disconnected";
+                } else if (err.type === 'peer-unavailable') {
+                    showToast("Handle not found or offline.");
+                    updateStatusUI(0);
                 } else {
-                    showToast("Connection failed. Try refreshing.");
+                    showToast("Network Error: " + err.type);
                 }
+            });
+
+            peer.on('disconnected', () => {
+                peer.reconnect();
             });
         }
 
         function setupConnection(conn) {
             const remoteHandle = conn.peer.replace('cc-p2p-', '');
             
+            if (connections[remoteHandle]) {
+                connections[remoteHandle].close();
+            }
+
             conn.on('open', () => {
                 connections[remoteHandle] = conn;
-                if (!messageHistory[remoteHandle]) messageHistory[remoteHandle] = [];
+                if (!messageHistory[remoteHandle]) {
+                    messageHistory[remoteHandle] = [];
+                    unreadCounts[remoteHandle] = 0;
+                }
                 updateChatList();
                 showToast(`Connected to ${remoteHandle.toUpperCase()}`);
+                if (activeChatId === remoteHandle) {
+                    openChat(remoteHandle); 
+                }
             });
 
             conn.on('data', (data) => {
@@ -219,29 +270,70 @@
                     statusLabel.className = "text-[10px] font-bold uppercase tracking-widest text-red-400";
                 }
             });
+            
+            conn.on('error', (err) => {
+                showToast("Connection failed.");
+            });
         }
 
-        document.getElementById('new-chat-trigger').onclick = () => document.getElementById('modal-overlay').classList.remove('hidden');
+        const avatarBtn = document.getElementById('user-avatar-btn');
+        const profileDropdown = document.getElementById('profile-dropdown');
+        
+        avatarBtn.onclick = (e) => {
+            e.stopPropagation();
+            profileDropdown.classList.toggle('show');
+        };
+
+        document.addEventListener('click', () => {
+            profileDropdown.classList.remove('show');
+        });
+
+        document.getElementById('delete-account-btn').onclick = (e) => {
+            e.stopPropagation();
+            profileDropdown.classList.remove('show');
+            document.getElementById('confirm-delete-modal').classList.remove('hidden');
+        };
+
+        document.getElementById('confirm-delete-cancel').onclick = () => {
+            document.getElementById('confirm-delete-modal').classList.add('hidden');
+        };
+
+        document.getElementById('confirm-delete-final').onclick = () => {
+            localStorage.removeItem('p2p_handle');
+            if (peer) peer.destroy();
+            location.reload();
+        };
+
+        document.getElementById('new-chat-trigger').onclick = () => {
+            document.getElementById('modal-overlay').classList.remove('hidden');
+            document.getElementById('search-input').focus();
+        };
+        
         document.getElementById('modal-cancel').onclick = () => document.getElementById('modal-overlay').classList.add('hidden');
 
         document.getElementById('search-btn').onclick = () => {
             const target = document.getElementById('search-input').value.trim().toLowerCase();
-            if (!target || target === myHandle) return showToast("Invalid handle");
+            if (!target) return;
+            if (target === myHandle) return showToast("You can't chat with yourself!");
 
             updateStatusUI(50);
             const conn = peer.connect('cc-p2p-' + target);
             setupConnection(conn);
             
-            setTimeout(() => {
-                if (connections[target]) {
-                    updateStatusUI(100);
-                    document.getElementById('modal-overlay').classList.add('hidden');
-                    openChat(target);
-                } else {
+            const timeout = setTimeout(() => {
+                if (!connections[target]) {
                     updateStatusUI(0);
-                    showToast("User not found. Check the handle.");
+                    showToast("Could not reach " + target.toUpperCase());
                 }
-            }, 2500);
+            }, 5000);
+
+            conn.on('open', () => {
+                clearTimeout(timeout);
+                updateStatusUI(100);
+                document.getElementById('modal-overlay').classList.add('hidden');
+                document.getElementById('search-input').value = '';
+                openChat(target);
+            });
         };
 
         function updateChatList() {
@@ -253,6 +345,8 @@
             handles.forEach(h => {
                 const isOnline = !!connections[h];
                 const isActive = activeChatId === h;
+                const unread = unreadCounts[h] > 0;
+                
                 const el = document.createElement('div');
                 el.className = `chat-item px-6 py-4 cursor-pointer flex items-center gap-4 transition-all hover:bg-gray-50 ${isActive ? 'active' : ''}`;
                 el.innerHTML = `
@@ -261,9 +355,10 @@
                         <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-300'}"></div>
                     </div>
                     <div class="flex-1 truncate">
-                        <div class="font-bold text-[13px] text-gray-900 capitalize-handle">${h}</div>
-                        <div class="text-[11px] opacity-60">${isOnline ? 'Online now' : 'Seen recently'}</div>
+                        <div class="font-bold text-[13px] text-gray-900 capitalize-handle ${unread && !isActive ? 'font-black' : 'font-bold'}">${h}</div>
+                        <div class="text-[11px] opacity-60">${isOnline ? 'Online now' : 'Disconnected'}</div>
                     </div>
+                    ${unread && !isActive ? '<div class="unread-indicator"></div>' : ''}
                 `;
                 el.onclick = () => openChat(h);
                 container.appendChild(el);
@@ -272,10 +367,15 @@
 
         function openChat(handle) {
             activeChatId = handle;
+            unreadCounts[handle] = 0; // Clear unread when opening
+            
             document.getElementById('no-chat-selected').classList.add('hidden');
             document.getElementById('active-chat-content').classList.remove('hidden');
             document.getElementById('chat-window').classList.replace('hidden', 'flex');
-            document.getElementById('sidebar').classList.add('hidden', 'md:flex');
+            
+            if (window.innerWidth < 768) {
+                document.getElementById('sidebar').classList.add('hidden');
+            }
             
             document.getElementById('target-handle-header').innerText = handle;
             document.getElementById('target-avatar').innerText = handle[0];
@@ -306,10 +406,20 @@
         }
 
         function handleIncomingMessage(handle, text) {
-            if (!messageHistory[handle]) messageHistory[handle] = [];
+            if (!messageHistory[handle]) {
+                messageHistory[handle] = [];
+                unreadCounts[handle] = 0;
+            }
+            
             messageHistory[handle].push({ sender: 'them', text });
-            if (activeChatId === handle) renderMessages();
-            else showToast(`New message from ${handle.toUpperCase()}`);
+            
+            if (activeChatId === handle) {
+                renderMessages();
+            } else {
+                unreadCounts[handle] = (unreadCounts[handle] || 0) + 1;
+                showToast(`New message from ${handle.toUpperCase()}`);
+            }
+            updateChatList();
         }
 
         document.getElementById('message-form').onsubmit = (e) => {
@@ -325,9 +435,15 @@
                 renderMessages();
                 input.value = '';
             } else {
-                showToast("Connection lost. User might be offline.");
+                showToast("User is offline. Cannot send.");
             }
         };
+
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 768) {
+                document.getElementById('sidebar').classList.remove('hidden');
+            }
+        });
 
     </script>
 </body>
