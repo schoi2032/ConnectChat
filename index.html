@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ConnectChat - Simple but Secure</title>
+    <title>ConnectChat - P2P Direct</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -12,7 +12,7 @@
         body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; height: 100vh; overflow: hidden; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .message-bubble { max-width: 80%; word-wrap: break-word; }
+        .message-bubble { max-width: 85%; word-wrap: break-word; position: relative; }
         .g-input { border-bottom: 1px solid #dadce0; transition: border-color 0.2s; }
         .g-input:focus { border-bottom: 2px solid #1a73e8; outline: none; }
         #status-toast { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: translate(-50%, 100px); opacity: 0; pointer-events: none; }
@@ -25,6 +25,10 @@
         .unread-indicator { width: 10px; height: 10px; background-color: #3b82f6; border-radius: 9999px; }
         .delete-chat-btn { opacity: 0; transition: opacity 0.2s; }
         .chat-item:hover .delete-chat-btn { opacity: 1; }
+        .msg-status-icon { font-size: 10px; margin-left: 4px; opacity: 0.6; }
+        .editable:hover { cursor: pointer; filter: brightness(0.95); }
+        .editable::after { content: 'Click to edit'; position: absolute; bottom: -18px; right: 0; font-size: 9px; opacity: 0; transition: opacity 0.2s; color: #94a3b8; }
+        .editable:hover::after { opacity: 1; }
     </style>
 </head>
 <body class="text-gray-900">
@@ -103,8 +107,8 @@
                     <div class="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6">
                         <i class="fas fa-comment-slash text-4xl text-gray-200"></i>
                     </div>
-                    <h2 class="text-xl font-bold mb-2 text-gray-800">Your Inbox is Empty</h2>
-                    <p class="max-w-xs text-sm leading-relaxed text-gray-400">Start a "New Chat" with a handle. Messaging activates once both users have each other's handles saved.</p>
+                    <h2 class="text-xl font-bold mb-2 text-gray-800">Your Inbox</h2>
+                    <p class="max-w-xs text-sm leading-relaxed text-gray-400">You can send messages even when friends are offline. They'll sync when both are back.</p>
                 </div>
 
                 <div id="active-chat-content" class="hidden flex-1 flex flex-col overflow-hidden">
@@ -113,7 +117,7 @@
                             <div id="target-avatar" class="w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center text-sm font-black uppercase">?</div>
                             <div>
                                 <h2 id="target-handle-header" class="font-bold text-gray-900 capitalize-handle truncate max-w-[250px]">...</h2>
-                                <p id="target-status" class="text-[10px] font-bold uppercase tracking-widest">Connection Status</p>
+                                <p id="target-status" class="text-[10px] font-bold uppercase tracking-widest">Offline Support Enabled</p>
                             </div>
                         </div>
                         <button class="p-2 text-gray-400 hover:text-gray-600" id="back-btn"><i class="fas fa-chevron-left"></i></button>
@@ -121,8 +125,8 @@
                     <div id="messages-container" class="flex-1 overflow-y-auto p-6 space-y-4 hide-scrollbar bg-white"></div>
                     <footer class="p-6 bg-white shrink-0 border-t border-gray-50">
                         <form id="message-form" class="flex items-center gap-3 bg-gray-100 rounded-2xl px-5 py-1.5 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-50 transition-all border border-transparent focus-within:border-blue-200">
-                            <input type="text" id="message-input" autocomplete="off" placeholder="Type a message..." class="flex-1 bg-transparent border-none py-3 outline-none text-sm text-gray-800 font-medium disabled:cursor-not-allowed">
-                            <button type="submit" id="send-btn" class="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center hover:bg-blue-700 transition disabled:bg-gray-300">
+                            <input type="text" id="message-input" autocomplete="off" placeholder="Type a message..." class="flex-1 bg-transparent border-none py-3 outline-none text-sm text-gray-800 font-medium">
+                            <button type="submit" id="send-btn" class="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center hover:bg-blue-700 transition">
                                 <i class="fas fa-paper-plane text-xs"></i>
                             </button>
                         </form>
@@ -145,10 +149,22 @@
         </div>
     </div>
 
+    <!-- Edit Message Modal -->
+    <div id="edit-modal-overlay" class="fixed inset-0 bg-slate-900/40 z-[220] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl relative border border-gray-100">
+            <h3 class="text-2xl font-bold mb-2 text-gray-900">Edit Message</h3>
+            <textarea id="edit-input" class="w-full py-4 g-input text-lg outline-none font-medium mb-8 min-h-[100px] resize-none"></textarea>
+            <div class="flex items-center gap-3">
+                <button id="edit-cancel" class="flex-1 py-3.5 text-gray-500 hover:bg-gray-50 rounded-xl font-bold text-sm">Cancel</button>
+                <button id="edit-save" class="flex-1 py-3.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold text-sm">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
     <div id="change-handle-modal" class="fixed inset-0 bg-slate-900/40 z-[120] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl relative border border-gray-100">
             <h3 class="text-2xl font-bold mb-2 text-gray-900 text-center">Update Identity</h3>
-            <p class="text-sm text-gray-500 mb-8 text-center">Your chats will stay saved under your new identity.</p>
+            <p class="text-sm text-gray-500 mb-8 text-center">Existing chats and local messages are preserved.</p>
             <input type="text" id="new-handle-input" placeholder="New handle" class="w-full py-4 g-input text-lg outline-none font-medium mb-8">
             <div class="flex items-center gap-3">
                 <button id="change-handle-cancel" class="flex-1 py-3.5 text-gray-500 hover:bg-gray-50 rounded-xl font-bold text-sm">Cancel</button>
@@ -181,8 +197,9 @@
         let activeChatId = null;
         let myHandle = localStorage.getItem('p2p_handle');
         let mutualVerified = {}; 
+        let editingMsgId = null;
 
-        // Core Persistence
+        // Message: { id, sender: 'me'|'them', text, timestamp, synced: bool, edited: bool }
         let messageHistory = JSON.parse(localStorage.getItem('p2p_history')) || {};
         let unreadCounts = JSON.parse(localStorage.getItem('p2p_unread')) || {};
 
@@ -225,7 +242,7 @@
                 peer = null;
             }
 
-            setTimeout(() => { // Small delay to ensure cleanup
+            setTimeout(() => {
                 peer = new Peer('cc-p2p-' + id);
                 
                 peer.on('open', () => {
@@ -234,7 +251,6 @@
                     document.getElementById('display-my-handle').innerText = id;
                     document.getElementById('user-avatar-btn').innerText = id[0];
                     updateChatList();
-                    // Auto-attempt reconnection to existing chats
                     Object.keys(messageHistory).forEach(h => attemptConnection(h));
                 });
 
@@ -247,7 +263,7 @@
                         document.getElementById('identity-overlay').classList.remove('hidden');
                     }
                 });
-            }, 100);
+            }, 50);
         }
 
         function attemptConnection(target) {
@@ -262,9 +278,16 @@
             conn.on('open', () => {
                 connections[remoteHandle] = conn;
                 
-                // CRITICAL: Handshake tells the receiver who we are and that we added them
+                // Handshake + Sync unsent messages
                 const amIAddingThem = !!messageHistory[remoteHandle];
-                conn.send({ type: 'handshake', hasAdded: amIAddingThem, from: myHandle });
+                const unsynced = (messageHistory[remoteHandle] || []).filter(m => m.sender === 'me' && !m.synced);
+                
+                conn.send({ 
+                    type: 'handshake', 
+                    hasAdded: amIAddingThem, 
+                    from: myHandle,
+                    syncMessages: unsynced
+                });
                 
                 updateChatList();
                 if (activeChatId === remoteHandle) openChat(remoteHandle); 
@@ -272,23 +295,35 @@
 
             conn.on('data', (data) => {
                 if (data.type === 'handshake') {
-                    // If they have us in their list, we're mutual
                     mutualVerified[remoteHandle] = data.hasAdded;
-                    
-                    // IF WE DON'T HAVE THEM, CREATE THE CHAT AUTOMATICALLY
                     if (!messageHistory[remoteHandle]) {
                         messageHistory[remoteHandle] = [];
                         unreadCounts[remoteHandle] = 0;
-                        saveState();
                     }
-
+                    // Handle incoming offline messages
+                    if (data.syncMessages && data.syncMessages.length > 0) {
+                        data.syncMessages.forEach(m => {
+                            if (!messageHistory[remoteHandle].find(ex => ex.id === m.id)) {
+                                handleIncomingMessage(remoteHandle, m.text, m.id);
+                            }
+                        });
+                    }
+                    saveState();
                     if (activeChatId === remoteHandle) openChat(remoteHandle);
                     updateChatList();
                 }
                 
                 if (data.type === 'chat') {
-                    if (messageHistory[remoteHandle] && mutualVerified[remoteHandle]) {
-                        handleIncomingMessage(remoteHandle, data.text);
+                    handleIncomingMessage(remoteHandle, data.text, data.id);
+                }
+
+                if (data.type === 'edit') {
+                    const msg = messageHistory[remoteHandle].find(m => m.id === data.id);
+                    if (msg) {
+                        msg.text = data.text;
+                        msg.edited = true;
+                        if (activeChatId === remoteHandle) renderMessages();
+                        saveState();
                     }
                 }
             });
@@ -301,7 +336,7 @@
             });
         }
 
-        // Profile Events
+        // Handle Change Logic
         document.getElementById('user-avatar-btn').onclick = (e) => { 
             e.stopPropagation(); 
             document.getElementById('profile-dropdown').classList.toggle('show'); 
@@ -325,14 +360,7 @@
 
         document.getElementById('change-handle-cancel').onclick = () => document.getElementById('change-handle-modal').classList.add('hidden');
 
-        document.getElementById('delete-account-btn').onclick = () => document.getElementById('confirm-delete-modal').classList.remove('hidden');
-        document.getElementById('confirm-delete-cancel').onclick = () => document.getElementById('confirm-delete-modal').classList.add('hidden');
-        document.getElementById('confirm-delete-final').onclick = () => {
-            localStorage.clear();
-            location.reload();
-        };
-
-        // Chat Logic
+        // Chat Management
         document.getElementById('new-chat-trigger').onclick = () => {
             document.getElementById('modal-overlay').classList.remove('hidden');
             document.getElementById('search-input').focus();
@@ -343,16 +371,13 @@
         document.getElementById('search-btn').onclick = () => {
             const target = document.getElementById('search-input').value.trim().toLowerCase();
             if (!target || target === myHandle) return showToast("Invalid target.");
-            
             document.getElementById('modal-overlay').classList.add('hidden');
             document.getElementById('search-input').value = '';
-
             if (!messageHistory[target]) {
                 messageHistory[target] = [];
                 unreadCounts[target] = 0;
                 saveState();
             }
-
             showToast(`Adding ${target}...`);
             attemptConnection(target);
             updateChatList();
@@ -361,35 +386,29 @@
         function updateChatList() {
             const container = document.getElementById('chat-list');
             const handles = Object.keys(messageHistory);
-            container.innerHTML = handles.length ? '' : '<div class="p-10 text-center text-gray-400 text-xs">No chats.</div>';
+            container.innerHTML = handles.length ? '' : '<div class="p-10 text-center text-gray-400 text-xs">No active chats.</div>';
             
             handles.forEach(h => {
                 const isOnline = !!connections[h];
-                const isMutual = mutualVerified[h];
                 const isActive = activeChatId === h;
                 const unread = unreadCounts[h] > 0;
-                
                 const el = document.createElement('div');
                 el.className = `chat-item px-6 py-4 cursor-pointer flex items-center gap-4 transition-all hover:bg-gray-50 group ${isActive ? 'active' : ''}`;
                 
-                let statusText = isOnline ? (isMutual ? 'Connected' : 'Pending...') : 'Offline';
-                let statusColor = isOnline ? (isMutual ? 'bg-green-500' : 'bg-orange-400') : 'bg-gray-300';
-
                 el.innerHTML = `
                     <div class="relative">
                         <div class="w-11 h-11 rounded-xl ${isActive ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'} flex items-center justify-center text-sm font-black uppercase">${h[0]}</div>
-                        <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${statusColor}"></div>
+                        <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-300'}"></div>
                     </div>
                     <div class="flex-1 truncate">
                         <div class="text-[13px] text-gray-900 capitalize-handle font-bold">${h}</div>
-                        <div class="text-[10px] opacity-60 font-bold uppercase tracking-tighter">${statusText}</div>
+                        <div class="text-[10px] opacity-60 font-bold uppercase tracking-tighter">${isOnline ? 'Online' : 'Offline Mode'}</div>
                     </div>
                     ${unread && !isActive ? '<div class="unread-indicator"></div>' : ''}
                     <button class="delete-chat-btn p-2 text-gray-300 hover:text-red-500" onclick="deleteConversation('${h}', event)">
                         <i class="fas fa-trash-alt text-[11px]"></i>
                     </button>
                 `;
-                
                 el.onclick = () => openChat(h);
                 container.appendChild(el);
             });
@@ -400,7 +419,6 @@
             if (connections[handle]) connections[handle].close();
             delete messageHistory[handle];
             delete unreadCounts[handle];
-            delete mutualVerified[handle];
             if (activeChatId === handle) {
                 activeChatId = null;
                 document.getElementById('no-chat-selected').classList.remove('hidden');
@@ -423,29 +441,6 @@
             document.getElementById('target-handle-header').innerText = handle;
             document.getElementById('target-avatar').innerText = handle[0];
             
-            const isOnline = !!connections[handle];
-            const isMutual = mutualVerified[handle];
-            const statusLabel = document.getElementById('target-status');
-            const msgInput = document.getElementById('message-input');
-            const sendBtn = document.getElementById('send-btn');
-
-            if (!isOnline) {
-                statusLabel.innerText = 'User Offline';
-                statusLabel.className = 'text-[10px] font-bold text-red-400 uppercase tracking-widest';
-                msgInput.disabled = true;
-                msgInput.placeholder = "Connect when they are online...";
-            } else if (!isMutual) {
-                statusLabel.innerText = 'Connection Pending';
-                statusLabel.className = 'text-[10px] font-bold text-orange-400 uppercase tracking-widest';
-                msgInput.disabled = true;
-                msgInput.placeholder = "Waiting for them to add you...";
-            } else {
-                statusLabel.innerText = 'Encrypted & Active';
-                statusLabel.className = 'text-[10px] font-bold text-green-500 uppercase tracking-widest';
-                msgInput.disabled = false;
-                msgInput.placeholder = "Type a message...";
-            }
-            
             renderMessages();
             updateChatList();
         }
@@ -460,19 +455,77 @@
                 const isGrouped = idx > 0 && history[idx-1].sender === m.sender;
                 const div = document.createElement('div');
                 div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} ${isGrouped ? 'mt-1' : 'mt-4'}`;
-                div.innerHTML = `<div class="message-bubble px-4 py-2 rounded-2xl text-[14px] ${isMe ? 'bg-blue-600 text-white rounded-tr-none shadow-blue-100' : 'bg-gray-100 text-gray-800 rounded-tl-none shadow-sm'} shadow-md">${m.text}</div>`;
+                
+                const statusIcon = isMe ? (m.synced ? '<i class="fas fa-check-double msg-status-icon text-blue-300"></i>' : '<i class="fas fa-clock msg-status-icon"></i>') : '';
+                const editedLabel = m.edited ? '<span class="text-[9px] opacity-50 ml-1 italic">(edited)</span>' : '';
+
+                div.innerHTML = `
+                    <div class="message-bubble px-4 py-2 rounded-2xl text-[14px] ${isMe ? 'bg-blue-600 text-white rounded-tr-none shadow-blue-100 editable' : 'bg-gray-100 text-gray-800 rounded-tl-none shadow-sm'} shadow-md" data-id="${m.id}">
+                        <span>${m.text}</span>
+                        <div class="flex items-center justify-end mt-1">
+                            ${editedLabel}
+                            ${statusIcon}
+                        </div>
+                    </div>
+                `;
+
+                if (isMe) {
+                    div.querySelector('.message-bubble').onclick = () => startEditMessage(m.id, m.text);
+                }
+
                 container.appendChild(div);
             });
             container.scrollTop = container.scrollHeight;
         }
 
-        function handleIncomingMessage(handle, text) {
+        function startEditMessage(id, currentText) {
+            editingMsgId = id;
+            document.getElementById('edit-modal-overlay').classList.remove('hidden');
+            document.getElementById('edit-input').value = currentText;
+            document.getElementById('edit-input').focus();
+        }
+
+        document.getElementById('edit-cancel').onclick = () => document.getElementById('edit-modal-overlay').classList.add('hidden');
+        
+        document.getElementById('edit-save').onclick = () => {
+            const newText = document.getElementById('edit-input').value.trim();
+            if (!newText || !activeChatId || !editingMsgId) return;
+
+            const msg = messageHistory[activeChatId].find(m => m.id === editingMsgId);
+            if (msg) {
+                msg.text = newText;
+                msg.edited = true;
+                
+                const conn = connections[activeChatId];
+                if (conn && conn.open) {
+                    conn.send({ type: 'edit', id: editingMsgId, text: newText });
+                }
+                
+                saveState();
+                renderMessages();
+            }
+            document.getElementById('edit-modal-overlay').classList.add('hidden');
+            editingMsgId = null;
+        };
+
+        function handleIncomingMessage(handle, text, id) {
             if (!messageHistory[handle]) messageHistory[handle] = [];
-            messageHistory[handle].push({ sender: 'them', text });
+            if (messageHistory[handle].find(m => m.id === id)) return; // Prevent duplicates
+
+            messageHistory[handle].push({ 
+                id: id || Date.now() + Math.random(),
+                sender: 'them', 
+                text,
+                timestamp: Date.now(),
+                synced: true,
+                edited: false
+            });
+
             if (activeChatId === handle) {
                 renderMessages();
             } else {
                 unreadCounts[handle] = (unreadCounts[handle] || 0) + 1;
+                showToast(`New message from ${handle.toUpperCase()}`);
             }
             saveState();
             updateChatList();
@@ -484,14 +537,31 @@
             const text = input.value.trim();
             if (!text || !activeChatId) return;
 
+            const msgId = Date.now() + Math.random();
             const conn = connections[activeChatId];
-            if (conn && conn.open && mutualVerified[activeChatId]) {
-                conn.send({ type: 'chat', text });
-                messageHistory[activeChatId].push({ sender: 'me', text });
-                saveState();
-                renderMessages();
-                input.value = '';
+            const isOnline = (conn && conn.open && mutualVerified[activeChatId]);
+
+            const newMsg = {
+                id: msgId,
+                sender: 'me',
+                text,
+                timestamp: Date.now(),
+                synced: isOnline,
+                edited: false
+            };
+
+            messageHistory[activeChatId].push(newMsg);
+            
+            if (isOnline) {
+                conn.send({ type: 'chat', text, id: msgId });
+            } else {
+                showToast("Recipient offline. Message will sync later.");
             }
+
+            saveState();
+            renderMessages();
+            input.value = '';
+            updateChatList();
         };
 
         document.getElementById('back-btn').onclick = () => {
