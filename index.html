@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ConnectChat - P2P Groups</title>
+    <title>ConnectChat - Simple but Safe</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -57,8 +57,13 @@
 
         #messages-container { scroll-behavior: smooth; }
 
-        .loader { width: 20px; height: 20px; border: 2px solid #f3f3f3; border-top: 2px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; display: inline-block; }
+        .loader { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top: 2px solid white; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        #suggestion-box { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); transform: scale(0.9); opacity: 0; pointer-events: none; }
+        #suggestion-box.active { transform: scale(1); opacity: 1; pointer-events: auto; }
+
+        .read-receipt { font-size: 10px; color: #1a73e8; margin-top: 2px; display: flex; align-items: center; gap: 4px; font-weight: 700; text-transform: uppercase; }
     </style>
 </head>
 <body class="text-gray-900">
@@ -80,14 +85,14 @@
             <div class="mb-8 inline-block p-6 bg-blue-50 rounded-3xl">
                 <i class="fas fa-comment-dots text-blue-600 text-5xl"></i>
             </div>
-            <h1 class="text-3xl font-bold mb-3">Welcome to Connect</h1>
-            <p class="text-gray-500 mb-8">Choose a unique handle for your messages.</p>
+            <h1 class="text-3xl font-bold mb-3">Connect</h1>
+            <p class="text-gray-500 mb-8">Secure, peer-to-peer messaging.</p>
             <div class="space-y-4">
-                <input type="text" id="my-handle-input" placeholder="Enter handle..." class="w-full py-4 px-2 g-input text-xl text-center">
-                <button id="set-identity-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-semibold shadow-xl transition-all">Start Chatting</button>
+                <input type="text" id="my-handle-input" placeholder="enter handle..." class="w-full py-4 px-2 g-input text-xl text-center lowercase">
+                <button id="set-identity-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-semibold shadow-xl transition-all">Join Network</button>
                 <div id="restore-section" class="hidden">
                     <button id="restore-identity-btn" class="w-full bg-gray-900 text-white py-4 rounded-2xl font-semibold flex items-center justify-center gap-3">
-                        Continue as <span id="restore-handle-name" class="text-blue-400 font-black"></span>
+                        Continue as <span id="restore-handle-name" class="text-blue-400 font-black lowercase"></span>
                     </button>
                 </div>
             </div>
@@ -99,20 +104,20 @@
         <header class="h-16 border-b border-gray-100 flex items-center justify-between px-6 bg-white shrink-0">
             <div class="flex items-center gap-4">
                 <div class="bg-blue-600 w-8 h-8 rounded-lg flex items-center justify-center"><i class="fas fa-comment text-white"></i></div>
-                <span class="text-xl font-bold tracking-tight">ConnectChat</span>
+                <span class="text-xl font-bold tracking-tight">Connect</span>
             </div>
             <div class="flex items-center gap-4 relative">
                 <div class="text-right hidden sm:block">
-                    <p id="display-my-handle" class="text-sm font-bold">...</p>
-                    <span class="text-[10px] text-green-500 font-bold uppercase">Online</span>
+                    <p id="display-my-handle" class="text-sm font-bold lowercase">...</p>
+                    <span class="text-[10px] text-green-500 font-bold uppercase tracking-widest">Live</span>
                 </div>
-                <button id="user-avatar-btn" class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold uppercase border border-blue-200">?</button>
+                <button id="user-avatar-btn" class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold uppercase border border-blue-200 shadow-sm">?</button>
                 <div id="profile-dropdown" class="absolute right-0 top-14 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-[150]">
                     <button id="change-handle-btn" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 flex items-center gap-3 text-sm font-semibold">
-                        <i class="fas fa-id-card text-blue-500"></i> Change Handle
+                        <i class="fas fa-id-card text-blue-500"></i> Edit Profile
                     </button>
                     <button id="delete-account-btn" class="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 flex items-center gap-3 text-sm font-semibold">
-                        <i class="fas fa-trash"></i> Delete Account
+                        <i class="fas fa-sign-out-alt"></i> Leave Network
                     </button>
                 </div>
             </div>
@@ -121,40 +126,49 @@
         <div class="flex flex-1 overflow-hidden">
             <aside id="sidebar" class="w-full md:w-80 border-r border-gray-100 flex flex-col bg-white">
                 <div class="p-5 flex gap-2">
-                    <button id="new-chat-trigger" class="flex-1 bg-gray-900 hover:bg-black text-white px-3 py-4 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2">
-                        <i class="fas fa-user-plus text-blue-400"></i> Direct
+                    <button id="new-chat-trigger" class="flex-1 bg-gray-900 hover:bg-black text-white px-3 py-4 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-gray-200">
+                        <i class="fas fa-plus text-blue-400"></i> DM
                     </button>
-                    <button id="new-group-trigger" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-4 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2">
-                        <i class="fas fa-users"></i> Group
+                    <button id="new-group-trigger" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-4 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-100">
+                        <i class="fas fa-users"></i> GROUP
                     </button>
                 </div>
                 <div class="flex-1 overflow-y-auto hide-scrollbar">
                     <div id="chat-list" class="space-y-0.5"></div>
                 </div>
+                <!-- Suggestion Button -->
+                <div class="p-4 border-t border-gray-50 flex justify-center">
+                    <button id="suggestion-trigger" class="text-[10px] font-bold text-gray-400 hover:text-blue-600 transition-colors uppercase tracking-widest flex items-center gap-2">
+                        <i class="fas fa-lightbulb"></i> Send Feedback
+                    </button>
+                </div>
             </aside>
 
             <main id="chat-window" class="hidden md:flex flex-1 flex-col bg-white relative">
                 <div id="no-chat-selected" class="flex-1 flex flex-col items-center justify-center text-gray-400 p-10 text-center">
-                    <i class="fas fa-comment-dots text-5xl mb-4 text-gray-100"></i>
-                    <h2 class="text-lg font-bold text-gray-800">Select a Chat</h2>
+                    <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+                        <i class="fas fa-quote-right text-gray-200 text-3xl"></i>
+                    </div>
+                    <h2 class="text-lg font-black text-gray-900 uppercase tracking-tighter">Your Workspace</h2>
+                    <p class="text-sm mt-1">Select a conversation to start messaging</p>
                 </div>
 
                 <div id="active-chat-content" class="hidden flex-1 flex flex-col overflow-hidden">
                     <header class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white/80 backdrop-blur-md">
                         <div class="flex items-center gap-4">
-                            <div id="target-avatar" class="w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center text-sm font-black">?</div>
+                            <div id="target-avatar" class="w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center text-sm font-black uppercase">?</div>
                             <div>
-                                <h2 id="target-handle-header" class="font-bold text-gray-900 truncate max-w-[150px]">...</h2>
-                                <p id="chat-meta" class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Connected via P2P</p>
+                                <h2 id="target-handle-header" class="font-bold text-gray-900 truncate max-w-[150px] lowercase">...</h2>
+                                <p id="chat-meta" class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">P2P Peer</p>
                             </div>
                         </div>
-                        <button class="p-2 text-gray-400" id="back-btn"><i class="fas fa-chevron-left"></i></button>
+                        <button class="p-2 text-gray-400 md:hidden" id="back-btn"><i class="fas fa-chevron-left"></i></button>
                     </header>
                     <div id="messages-container" class="flex-1 overflow-y-auto p-6 space-y-4 hide-scrollbar"></div>
-                    <footer class="p-6 bg-white border-t border-gray-50">
-                        <form id="message-form" class="flex items-center gap-3 bg-gray-100 rounded-2xl px-5 py-2">
-                            <input type="text" id="message-input" autocomplete="off" placeholder="Type a message..." class="flex-1 bg-transparent border-none py-2 outline-none text-sm font-medium">
-                            <button type="submit" class="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"><i class="fas fa-paper-plane text-xs"></i></button>
+                    <footer class="p-6 bg-white">
+                        <form id="message-form" class="flex items-center gap-3 bg-gray-100 rounded-2xl px-5 py-2 ring-1 ring-gray-200">
+                            <input type="text" id="message-input" autocomplete="off" placeholder="Message..." class="flex-1 bg-transparent border-none py-2 outline-none text-sm font-medium">
+                            <button type="submit" class="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"><i class="fas fa-arrow-up text-xs"></i></button>
                         </form>
                     </footer>
                 </div>
@@ -162,40 +176,52 @@
         </div>
     </div>
 
+    <!-- Feedback/Suggestion Box -->
+    <div id="suggestion-box" class="fixed bottom-6 right-6 w-72 bg-white rounded-3xl shadow-2xl border border-gray-100 p-5 z-[200]">
+        <div class="flex items-center justify-between mb-4">
+            <h4 class="text-xs font-black uppercase tracking-widest text-gray-900">Feedback</h4>
+            <button onclick="toggleSuggestionBox()" class="text-gray-400 hover:text-gray-900"><i class="fas fa-times"></i></button>
+        </div>
+        <textarea id="suggestion-text" placeholder="Tell us what to improve..." class="w-full h-24 bg-gray-50 rounded-xl p-3 text-sm border-none focus:ring-1 focus:ring-blue-100 resize-none mb-3"></textarea>
+        <button onclick="sendFeedback()" class="w-full bg-gray-900 text-white py-3 rounded-xl text-xs font-bold uppercase tracking-widest">Send</button>
+    </div>
+
     <!-- Direct Chat Modal -->
-    <div id="modal-overlay" class="fixed inset-0 bg-black/20 z-[110] hidden flex items-center justify-center p-4">
+    <div id="modal-overlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[110] hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl">
-            <h3 class="text-xl font-bold mb-4">Start New Chat</h3>
-            <input type="text" id="search-input" placeholder="User handle" class="w-full py-4 g-input text-lg mb-4">
-            <div id="search-status" class="text-xs font-semibold text-gray-400 mb-6 text-center h-4"></div>
+            <h3 class="text-xl font-bold mb-2">New Chat</h3>
+            <p class="text-xs text-gray-400 mb-6 uppercase tracking-widest font-bold">Search by handle</p>
+            <input type="text" id="search-input" placeholder="handle name..." class="w-full py-4 g-input text-lg mb-4 lowercase">
+            <div id="search-status" class="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-6 text-center h-4"></div>
             <div class="flex gap-3">
-                <button class="modal-cancel flex-1 py-3 text-gray-500 font-bold">Cancel</button>
-                <button id="search-btn" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-2">
-                    <span id="search-btn-text">Add User</span>
+                <button class="modal-cancel flex-1 py-3 text-gray-400 font-bold text-xs uppercase">Cancel</button>
+                <button id="search-btn" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2">
+                    <span id="search-btn-text">Connect</span>
                 </button>
             </div>
         </div>
     </div>
 
     <!-- Group Chat Modal -->
-    <div id="group-modal-overlay" class="fixed inset-0 bg-black/20 z-[110] hidden flex items-center justify-center p-4">
+    <div id="group-modal-overlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[110] hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl">
-            <h3 class="text-xl font-bold mb-4">Create Group</h3>
+            <h3 class="text-xl font-bold mb-2">New Group</h3>
+            <p class="text-xs text-gray-400 mb-6 uppercase tracking-widest font-bold">Collaborative space</p>
             <div class="space-y-4">
-                <input type="text" id="group-name-input" placeholder="Group Name" class="w-full py-4 g-input text-lg">
-                <input type="text" id="group-members-input" placeholder="Members (comma separated)" class="w-full py-4 g-input text-lg">
-                <div id="group-search-status" class="text-xs font-semibold text-gray-400 text-center h-4"></div>
+                <input type="text" id="group-name-input" placeholder="group name..." class="w-full py-4 g-input text-lg lowercase">
+                <input type="text" id="group-members-input" placeholder="handles (comma separated)" class="w-full py-4 g-input text-lg lowercase">
+                <div id="group-search-status" class="text-[10px] font-black uppercase tracking-widest text-gray-400 text-center h-4"></div>
             </div>
             <div class="flex gap-3 mt-6">
-                <button class="modal-cancel flex-1 py-3 text-gray-500 font-bold">Cancel</button>
-                <button id="create-group-btn" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-2">
+                <button class="modal-cancel flex-1 py-3 text-gray-400 font-bold text-xs uppercase">Cancel</button>
+                <button id="create-group-btn" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2">
                     <span id="group-btn-text">Create</span>
                 </button>
             </div>
         </div>
     </div>
 
-    <div id="status-toast" class="fixed bottom-0 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-8 py-4 rounded-2xl shadow-2xl text-sm z-[150] flex items-center gap-3">
+    <div id="status-toast" class="fixed bottom-0 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-8 py-4 rounded-2xl shadow-2xl text-[10px] font-bold uppercase tracking-widest z-[150] flex items-center gap-3">
         <span id="toast-msg">Notice</span>
     </div>
 
@@ -270,26 +296,21 @@
             });
             peer.on('connection', setupConnection);
             peer.on('error', (err) => {
-                if(err.type === 'unavailable-id') showToast("Handle is currently taken.");
-                console.error(err);
+                if(err.type === 'unavailable-id') showToast("ID ALREADY TAKEN");
             });
         }
 
-        /**
-         * Pings a handle to see if they exist (online)
-         * Returns a promise that resolves to true if found
-         */
         function verifyUserExists(handle) {
             return new Promise((resolve) => {
                 const conn = peer.connect('cc-p2p-' + handle);
                 const timeout = setTimeout(() => {
                     conn.close();
                     resolve(false);
-                }, 4000); // 4 second timeout for discovery
+                }, 4000);
 
                 conn.on('open', () => {
                     clearTimeout(timeout);
-                    setupConnection(conn); // Maintain the connection if it opened
+                    setupConnection(conn);
                     resolve(true);
                 });
                 conn.on('error', () => {
@@ -330,7 +351,7 @@
 
         function handleIncoming(chatId, data) {
             if (data.groupId && !groupMeta[chatId]) {
-                groupMeta[chatId] = { name: data.groupName, members: data.members };
+                groupMeta[chatId] = { name: data.groupName.toLowerCase(), members: data.members };
             }
             if (!messageHistory[chatId]) messageHistory[chatId] = [];
             if (messageHistory[chatId].find(m => m.id === data.id)) return;
@@ -398,21 +419,23 @@
             const html = history.map(m => {
                 const isMe = m.sender === 'me';
                 const reactionsHtml = (m.reactions || []).map(r => `<span class="reaction-badge">${r.emoji}</span>`).join('');
+                const isLastSynced = m.id === lastSyncedId;
+                
                 return `
                     <div class="flex flex-col ${isMe ? 'items-end is-me' : 'items-start is-them'}">
-                        ${isGroup && !isMe ? `<span class="text-[10px] font-bold text-gray-400 mb-1 ml-2 uppercase">${m.from}</span>` : ''}
+                        ${isGroup && !isMe ? `<span class="text-[9px] font-black text-gray-400 mb-1 ml-2 uppercase tracking-widest lowercase">${m.from}</span>` : ''}
                         <div class="message-bubble px-4 py-2.5 rounded-2xl text-[14px] shadow-sm ${isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-gray-100 text-gray-800 rounded-tl-none'}" 
                              onclick="showReactionPicker(event, '${m.id}')">
                             <span class="block">${m.text}</span>
                             <div class="reaction-container">${reactionsHtml}</div>
                         </div>
-                        ${m.id === lastSyncedId ? `<div class="read-receipt-avatar bg-gray-900 text-white">${activeChatId[0]}</div>` : ''}
+                        ${isLastSynced ? `<div class="read-receipt"><i class="fas fa-check-circle"></i> Read</div>` : ''}
                     </div>
                 `;
             }).join('');
 
             container.innerHTML = html;
-            container.scrollTo({ top: container.scrollHeight, behavior: 'instant' });
+            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
         }
 
         function showReactionPicker(e, msgId) {
@@ -469,7 +492,7 @@
             const isGroup = !!groupMeta[h];
             document.getElementById('target-handle-header').innerText = isGroup ? groupMeta[h].name : h;
             document.getElementById('target-avatar').innerText = (isGroup ? groupMeta[h].name : h)[0];
-            document.getElementById('chat-meta').innerText = isGroup ? `${groupMeta[h].members.length} Members` : 'Connected via P2P';
+            document.getElementById('chat-meta').innerText = isGroup ? `${groupMeta[h].members.length} Members` : 'Active Connection';
             renderMessages();
             updateChatList();
             saveState();
@@ -485,14 +508,14 @@
                 return `
                     <div class="chat-item px-6 py-4 cursor-pointer flex items-center gap-4 hover:bg-gray-50 ${activeChatId === h ? 'active' : ''}" onclick="openChat('${h}')">
                         <div class="relative">
-                            <div class="w-10 h-10 rounded-xl ${isGroup ? 'bg-blue-600 text-white' : 'bg-gray-100'} flex items-center justify-center font-bold uppercase">${name[0]}</div>
+                            <div class="w-10 h-10 rounded-xl ${isGroup ? 'bg-blue-600 text-white shadow-lg shadow-blue-50' : 'bg-gray-100'} flex items-center justify-center font-bold uppercase">${name[0]}</div>
                             <div class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-300'}"></div>
                         </div>
                         <div class="flex-1 truncate">
-                            <div class="text-[13px] font-bold">${name}</div>
-                            <div class="text-[10px] text-gray-400 uppercase font-black">${isGroup ? 'Group Chat' : (isOnline ? 'Active' : 'Offline')}</div>
+                            <div class="text-[13px] font-bold lowercase">${name}</div>
+                            <div class="text-[9px] text-gray-400 uppercase font-black tracking-widest">${isGroup ? 'Group' : (isOnline ? 'Active' : 'Standby')}</div>
                         </div>
-                        ${unread ? '<div class="w-2.5 h-2.5 bg-blue-600 rounded-full"></div>' : ''}
+                        ${unread ? '<div class="w-2 h-2 bg-blue-600 rounded-full shadow-lg shadow-blue-200"></div>' : ''}
                     </div>
                 `;
             }).join('');
@@ -518,7 +541,7 @@
 
             if (!target || target === myHandle) return;
             
-            status.innerText = "Checking if user exists...";
+            status.innerText = "VERIFYING USER...";
             btnText.innerHTML = `<div class="loader"></div>`;
 
             const exists = await verifyUserExists(target);
@@ -529,24 +552,24 @@
                 document.getElementById('modal-overlay').classList.add('hidden');
                 openChat(target);
             } else {
-                status.innerHTML = `<span class="text-red-500">User not found or offline.</span>`;
+                status.innerHTML = `<span class="text-red-500">USER UNREACHABLE</span>`;
             }
-            btnText.innerText = "Add User";
+            btnText.innerText = "CONNECT";
             document.getElementById('search-input').value = '';
         };
 
         document.getElementById('create-group-btn').onclick = async () => {
-            const name = document.getElementById('group-name-input').value.trim();
-            const membersRaw = document.getElementById('group-members-input').value.trim();
+            const name = document.getElementById('group-name-input').value.trim().toLowerCase();
+            const membersRaw = document.getElementById('group-members-input').value.trim().toLowerCase();
             const status = document.getElementById('group-search-status');
             const btnText = document.getElementById('group-btn-text');
 
-            if (!name || !membersRaw) return showToast("Name and members required");
+            if (!name || !membersRaw) return showToast("INPUT REQUIRED");
             
-            const members = membersRaw.split(',').map(m => m.trim().toLowerCase()).filter(m => m.length > 0);
+            const members = membersRaw.split(',').map(m => m.trim()).filter(m => m.length > 0);
             
             btnText.innerHTML = `<div class="loader"></div>`;
-            status.innerText = "Verifying members...";
+            status.innerText = "PINGING MEMBERS...";
 
             let validMembers = [myHandle];
             for(let m of members) {
@@ -556,8 +579,8 @@
             }
 
             if (validMembers.length < 2) {
-                status.innerHTML = `<span class="text-red-500">No valid members found.</span>`;
-                btnText.innerText = "Create";
+                status.innerHTML = `<span class="text-red-500">NO MEMBERS ACTIVE</span>`;
+                btnText.innerText = "CREATE";
                 return;
             }
 
@@ -569,11 +592,25 @@
             updateChatList();
             openChat(groupId);
             document.getElementById('group-modal-overlay').classList.add('hidden');
-            btnText.innerText = "Create";
+            btnText.innerText = "CREATE";
             document.getElementById('group-name-input').value = '';
             document.getElementById('group-members-input').value = '';
         };
 
+        // Utility functions for UI
+        function toggleSuggestionBox() {
+            document.getElementById('suggestion-box').classList.toggle('active');
+        }
+
+        function sendFeedback() {
+            const txt = document.getElementById('suggestion-text').value;
+            if(!txt) return;
+            showToast("FEEDBACK SENT");
+            document.getElementById('suggestion-text').value = '';
+            toggleSuggestionBox();
+        }
+
+        document.getElementById('suggestion-trigger').onclick = (e) => { e.stopPropagation(); toggleSuggestionBox(); };
         document.getElementById('user-avatar-btn').onclick = (e) => { e.stopPropagation(); document.getElementById('profile-dropdown').classList.toggle('show'); };
         document.getElementById('back-btn').onclick = () => { document.getElementById('sidebar').classList.remove('hidden'); document.getElementById('chat-window').classList.add('hidden'); activeChatId = null; };
         document.getElementById('delete-account-btn').onclick = () => { localStorage.clear(); location.reload(); };
