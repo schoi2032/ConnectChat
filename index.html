@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ConnectChat - Simple but Safe</title>
+    <title>ConnectChat - P2P Groups</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -13,7 +13,6 @@
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* Optimized Message Bubbles */
         .message-bubble { 
             max-width: 85%; 
             word-wrap: break-word; 
@@ -36,49 +35,36 @@
         
         .chat-item.active { background-color: #f0f7ff; color: #1a73e8; border-left: 4px solid #1a73e8; }
         .chat-item { border-left: 4px solid transparent; transition: background 0.2s; }
-        .capitalize-handle { text-transform: capitalize; }
         
         #profile-dropdown { transition: all 0.2s ease-out; transform: translateY(-10px); opacity: 0; pointer-events: none; }
         #profile-dropdown.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
         
-        .read-receipt-avatar { width: 16px; height: 16px; border-radius: 5px; font-size: 9px; font-weight: 900; display: flex; align-items: center; justify-content: center; margin-top: 2px; border: 1.5px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        
-        /* Reaction UI */
         .reaction-container { position: absolute; bottom: -12px; display: flex; gap: 2px; pointer-events: none; z-index: 10; }
         .is-me .reaction-container { right: 8px; flex-direction: row-reverse; }
         .is-them .reaction-container { left: 8px; }
-        .reaction-badge { background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 2px 6px; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); animation: pop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: auto; }
+        .reaction-badge { background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 2px 6px; font-size: 11px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); animation: pop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: auto; }
         
         @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
 
         #reaction-picker { 
-            position: fixed; 
-            z-index: 300; 
-            background: white; 
-            border-radius: 30px; 
-            padding: 8px 12px; 
-            display: flex; 
-            gap: 10px; 
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); 
-            border: 1px solid #f1f5f9;
-            transform: translateY(10px);
-            opacity: 0;
-            pointer-events: none;
-            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: fixed; z-index: 300; background: white; border-radius: 30px; padding: 8px 12px; display: flex; gap: 10px; 
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); border: 1px solid #f1f5f9;
+            transform: translateY(10px); opacity: 0; pointer-events: none; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         #reaction-picker.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
         .emoji-btn { font-size: 20px; transition: transform 0.2s; cursor: pointer; }
         .emoji-btn:hover { transform: scale(1.3); }
 
-        /* Smoother scrolling */
         #messages-container { scroll-behavior: smooth; }
+
+        .loader { width: 20px; height: 20px; border: 2px solid #f3f3f3; border-top: 2px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; display: inline-block; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="text-gray-900">
 
     <div id="conn-status" class="fixed top-0 left-0 right-0 h-1 bg-blue-500 z-[200] transition-all duration-500 w-0"></div>
 
-    <!-- Reaction Picker -->
     <div id="reaction-picker">
         <span class="emoji-btn" onclick="reactToMessage('👍')">👍</span>
         <span class="emoji-btn" onclick="reactToMessage('❤️')">❤️</span>
@@ -117,8 +103,8 @@
             </div>
             <div class="flex items-center gap-4 relative">
                 <div class="text-right hidden sm:block">
-                    <p id="display-my-handle" class="text-sm font-bold capitalize-handle">...</p>
-                    <span class="text-[10px] text-green-500 font-bold uppercase tracking-tighter">Online</span>
+                    <p id="display-my-handle" class="text-sm font-bold">...</p>
+                    <span class="text-[10px] text-green-500 font-bold uppercase">Online</span>
                 </div>
                 <button id="user-avatar-btn" class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold uppercase border border-blue-200">?</button>
                 <div id="profile-dropdown" class="absolute right-0 top-14 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-[150]">
@@ -134,9 +120,12 @@
 
         <div class="flex flex-1 overflow-hidden">
             <aside id="sidebar" class="w-full md:w-80 border-r border-gray-100 flex flex-col bg-white">
-                <div class="p-5">
-                    <button id="new-chat-trigger" class="bg-gray-900 hover:bg-black text-white px-4 py-4 rounded-2xl text-sm font-bold w-full transition-all flex items-center justify-center gap-2">
-                        <i class="fas fa-plus-circle text-blue-400"></i> New Chat
+                <div class="p-5 flex gap-2">
+                    <button id="new-chat-trigger" class="flex-1 bg-gray-900 hover:bg-black text-white px-3 py-4 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2">
+                        <i class="fas fa-user-plus text-blue-400"></i> Direct
+                    </button>
+                    <button id="new-group-trigger" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-4 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2">
+                        <i class="fas fa-users"></i> Group
                     </button>
                 </div>
                 <div class="flex-1 overflow-y-auto hide-scrollbar">
@@ -155,8 +144,8 @@
                         <div class="flex items-center gap-4">
                             <div id="target-avatar" class="w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center text-sm font-black">?</div>
                             <div>
-                                <h2 id="target-handle-header" class="font-bold text-gray-900 capitalize-handle truncate max-w-[150px]">...</h2>
-                                <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Connected via P2P</p>
+                                <h2 id="target-handle-header" class="font-bold text-gray-900 truncate max-w-[150px]">...</h2>
+                                <p id="chat-meta" class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Connected via P2P</p>
                             </div>
                         </div>
                         <button class="p-2 text-gray-400" id="back-btn"><i class="fas fa-chevron-left"></i></button>
@@ -173,14 +162,35 @@
         </div>
     </div>
 
-    <!-- Modals -->
+    <!-- Direct Chat Modal -->
     <div id="modal-overlay" class="fixed inset-0 bg-black/20 z-[110] hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl">
             <h3 class="text-xl font-bold mb-4">Start New Chat</h3>
-            <input type="text" id="search-input" placeholder="User handle" class="w-full py-4 g-input text-lg mb-6">
+            <input type="text" id="search-input" placeholder="User handle" class="w-full py-4 g-input text-lg mb-4">
+            <div id="search-status" class="text-xs font-semibold text-gray-400 mb-6 text-center h-4"></div>
             <div class="flex gap-3">
-                <button id="modal-cancel" class="flex-1 py-3 text-gray-500 font-bold">Cancel</button>
-                <button id="search-btn" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold">Add</button>
+                <button class="modal-cancel flex-1 py-3 text-gray-500 font-bold">Cancel</button>
+                <button id="search-btn" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-2">
+                    <span id="search-btn-text">Add User</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Group Chat Modal -->
+    <div id="group-modal-overlay" class="fixed inset-0 bg-black/20 z-[110] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl">
+            <h3 class="text-xl font-bold mb-4">Create Group</h3>
+            <div class="space-y-4">
+                <input type="text" id="group-name-input" placeholder="Group Name" class="w-full py-4 g-input text-lg">
+                <input type="text" id="group-members-input" placeholder="Members (comma separated)" class="w-full py-4 g-input text-lg">
+                <div id="group-search-status" class="text-xs font-semibold text-gray-400 text-center h-4"></div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button class="modal-cancel flex-1 py-3 text-gray-500 font-bold">Cancel</button>
+                <button id="create-group-btn" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-2">
+                    <span id="group-btn-text">Create</span>
+                </button>
             </div>
         </div>
     </div>
@@ -198,11 +208,13 @@
 
         let messageHistory = JSON.parse(localStorage.getItem('p2p_history')) || {};
         let unreadCounts = JSON.parse(localStorage.getItem('p2p_unread')) || {};
+        let groupMeta = JSON.parse(localStorage.getItem('p2p_groups')) || {};
 
         function saveState() {
             localStorage.setItem('p2p_history', JSON.stringify(messageHistory));
             localStorage.setItem('p2p_unread', JSON.stringify(unreadCounts));
             localStorage.setItem('p2p_handle', myHandle);
+            localStorage.setItem('p2p_groups', JSON.stringify(groupMeta));
         }
 
         const showToast = (msg) => {
@@ -246,13 +258,44 @@
                 document.getElementById('display-my-handle').innerText = id;
                 document.getElementById('user-avatar-btn').innerText = id[0];
                 updateChatList();
-                Object.keys(messageHistory).forEach(h => attemptConnection(h));
+                
+                Object.keys(messageHistory).forEach(h => {
+                    if (!groupMeta[h]) attemptConnection(h);
+                });
+                Object.values(groupMeta).forEach(g => {
+                    g.members.forEach(m => {
+                        if (m !== myHandle) attemptConnection(m);
+                    });
+                });
             });
             peer.on('connection', setupConnection);
             peer.on('error', (err) => {
                 if(err.type === 'unavailable-id') showToast("Handle is currently taken.");
-                else showToast("Connection error occurred.");
                 console.error(err);
+            });
+        }
+
+        /**
+         * Pings a handle to see if they exist (online)
+         * Returns a promise that resolves to true if found
+         */
+        function verifyUserExists(handle) {
+            return new Promise((resolve) => {
+                const conn = peer.connect('cc-p2p-' + handle);
+                const timeout = setTimeout(() => {
+                    conn.close();
+                    resolve(false);
+                }, 4000); // 4 second timeout for discovery
+
+                conn.on('open', () => {
+                    clearTimeout(timeout);
+                    setupConnection(conn); // Maintain the connection if it opened
+                    resolve(true);
+                });
+                conn.on('error', () => {
+                    clearTimeout(timeout);
+                    resolve(false);
+                });
             });
         }
 
@@ -263,6 +306,8 @@
 
         function setupConnection(conn) {
             const remoteHandle = conn.peer.replace('cc-p2p-', '');
+            if (connections[remoteHandle]) return;
+
             conn.on('open', () => {
                 connections[remoteHandle] = conn;
                 conn.send({ type: 'handshake', from: myHandle });
@@ -271,10 +316,11 @@
             });
 
             conn.on('data', (data) => {
-                if (data.type === 'chat') handleIncoming(remoteHandle, data);
-                if (data.type === 'reaction') handleReaction(remoteHandle, data);
+                if (data.type === 'chat') handleIncoming(data.groupId || remoteHandle, data);
+                if (data.type === 'reaction') handleReaction(data.groupId || remoteHandle, data);
                 if (data.type === 'receipt') {
-                    const m = messageHistory[remoteHandle].find(x => x.id === data.id);
+                    const chatId = data.groupId || remoteHandle;
+                    const m = messageHistory[chatId]?.find(x => x.id === data.id);
                     if (m) { m.synced = true; renderMessages(); saveState(); }
                 }
             });
@@ -282,73 +328,79 @@
             conn.on('close', () => { delete connections[remoteHandle]; updateChatList(); });
         }
 
-        function handleIncoming(handle, data) {
-            if (!messageHistory[handle]) messageHistory[handle] = [];
-            if (messageHistory[handle].find(m => m.id === data.id)) return;
-            messageHistory[handle].push({ ...data, sender: 'them', reactions: [] });
-            
-            if (activeChatId === handle) {
-                renderMessages(); 
-            } else {
-                unreadCounts[handle] = (unreadCounts[handle]||0)+1;
+        function handleIncoming(chatId, data) {
+            if (data.groupId && !groupMeta[chatId]) {
+                groupMeta[chatId] = { name: data.groupName, members: data.members };
             }
-            
-            connections[handle]?.send({ type: 'receipt', id: data.id });
+            if (!messageHistory[chatId]) messageHistory[chatId] = [];
+            if (messageHistory[chatId].find(m => m.id === data.id)) return;
+            messageHistory[chatId].push({ ...data, sender: data.from || 'them', reactions: [] });
+            if (activeChatId === chatId) renderMessages(); 
+            else unreadCounts[chatId] = (unreadCounts[chatId]||0)+1;
+            connections[data.from]?.send({ type: 'receipt', id: data.id, groupId: data.groupId });
             saveState(); 
             updateChatList();
         }
 
-        function handleReaction(handle, data) {
-            const history = messageHistory[handle] || [];
+        function handleReaction(chatId, data) {
+            const history = messageHistory[chatId] || [];
             const msg = history.find(m => m.id === data.messageId);
             if (msg) {
                 if (!msg.reactions) msg.reactions = [];
-                const existingIdx = msg.reactions.findIndex(r => r.emoji === data.emoji && r.user === handle);
+                const existingIdx = msg.reactions.findIndex(r => r.emoji === data.emoji && r.user === data.from);
                 if (existingIdx > -1) msg.reactions.splice(existingIdx, 1);
-                else msg.reactions.push({ emoji: data.emoji, user: handle });
-                if (activeChatId === handle) renderMessages();
+                else msg.reactions.push({ emoji: data.emoji, user: data.from });
+                if (activeChatId === chatId) renderMessages();
                 saveState();
             }
         }
 
-        // Messaging Logic
         document.getElementById('message-form').onsubmit = (e) => {
             e.preventDefault();
             const input = document.getElementById('message-input');
             const text = input.value.trim();
             if (!text || !activeChatId) return;
 
+            const isGroup = !!groupMeta[activeChatId];
             const msg = { 
                 id: Date.now() + Math.random(), 
                 text, 
                 timestamp: Date.now(), 
+                from: myHandle,
                 sender: 'me', 
                 reactions: [], 
                 synced: false 
             };
+
+            if (isGroup) {
+                msg.groupId = activeChatId;
+                msg.groupName = groupMeta[activeChatId].name;
+                msg.members = groupMeta[activeChatId].members;
+                groupMeta[activeChatId].members.forEach(m => {
+                    if (m !== myHandle) connections[m]?.send({ type: 'chat', ...msg });
+                });
+            } else {
+                connections[activeChatId]?.send({ type: 'chat', ...msg });
+            }
             
             messageHistory[activeChatId].push(msg);
-            connections[activeChatId]?.send({ type: 'chat', ...msg });
-            
             input.value = '';
             renderMessages();
             saveState();
         };
 
-        // Optimized Renderer
         function renderMessages() {
             const container = document.getElementById('messages-container');
             const history = messageHistory[activeChatId] || [];
-            
-            // Generate full HTML string for faster injection than recursive appendChild
+            const isGroup = !!groupMeta[activeChatId];
             const lastSyncedId = [...history].reverse().find(m => m.sender === 'me' && m.synced)?.id;
             
             const html = history.map(m => {
                 const isMe = m.sender === 'me';
                 const reactionsHtml = (m.reactions || []).map(r => `<span class="reaction-badge">${r.emoji}</span>`).join('');
-                
                 return `
                     <div class="flex flex-col ${isMe ? 'items-end is-me' : 'items-start is-them'}">
+                        ${isGroup && !isMe ? `<span class="text-[10px] font-bold text-gray-400 mb-1 ml-2 uppercase">${m.from}</span>` : ''}
                         <div class="message-bubble px-4 py-2.5 rounded-2xl text-[14px] shadow-sm ${isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-gray-100 text-gray-800 rounded-tl-none'}" 
                              onclick="showReactionPicker(event, '${m.id}')">
                             <span class="block">${m.text}</span>
@@ -360,8 +412,6 @@
             }).join('');
 
             container.innerHTML = html;
-            
-            // Instant scroll to bottom
             container.scrollTo({ top: container.scrollHeight, behavior: 'instant' });
         }
 
@@ -369,19 +419,12 @@
             e.stopPropagation();
             reactionTargetId = msgId;
             const picker = document.getElementById('reaction-picker');
-            
-            // Improved Positioning Logic
             const rect = e.currentTarget.getBoundingClientRect();
             const pickerWidth = 240;
-            const pickerHeight = 50;
-
             let x = rect.left + (rect.width / 2) - (pickerWidth / 2);
-            let y = rect.top - pickerHeight - 10;
-
-            // Constrain to viewport
+            let y = rect.top - 60;
             x = Math.max(10, Math.min(x, window.innerWidth - pickerWidth - 10));
-            if (y < 10) y = rect.bottom + 10; // Show below if no space above
-
+            if (y < 10) y = rect.bottom + 10;
             picker.style.left = `${x}px`;
             picker.style.top = `${y}px`;
             picker.classList.add('show');
@@ -389,16 +432,20 @@
 
         function reactToMessage(emoji) {
             if (!reactionTargetId || !activeChatId) return;
-            
             const msg = messageHistory[activeChatId].find(m => m.id == reactionTargetId);
             if (msg) {
+                const isGroup = !!groupMeta[activeChatId];
+                const reactionData = { type: 'reaction', messageId: reactionTargetId, emoji, from: myHandle };
+                if (isGroup) {
+                    reactionData.groupId = activeChatId;
+                    groupMeta[activeChatId].members.forEach(m => { if(m !== myHandle) connections[m]?.send(reactionData); });
+                } else {
+                    connections[activeChatId]?.send(reactionData);
+                }
                 if (!msg.reactions) msg.reactions = [];
-                const existingIdx = msg.reactions.findIndex(r => r.emoji === emoji && r.user === myHandle);
-                
-                if (existingIdx > -1) msg.reactions.splice(existingIdx, 1);
+                const idx = msg.reactions.findIndex(r => r.emoji === emoji && r.user === myHandle);
+                if (idx > -1) msg.reactions.splice(idx, 1);
                 else msg.reactions.push({ emoji, user: myHandle });
-
-                connections[activeChatId]?.send({ type: 'reaction', messageId: reactionTargetId, emoji });
                 renderMessages();
                 saveState();
             }
@@ -418,14 +465,11 @@
             document.getElementById('no-chat-selected').classList.add('hidden');
             document.getElementById('active-chat-content').classList.remove('hidden');
             document.getElementById('chat-window').classList.replace('hidden', 'flex');
-            
-            if (window.innerWidth < 768) {
-                document.getElementById('sidebar').classList.add('hidden');
-            }
-            
-            document.getElementById('target-handle-header').innerText = h;
-            document.getElementById('target-avatar').innerText = h[0];
-            
+            if (window.innerWidth < 768) document.getElementById('sidebar').classList.add('hidden');
+            const isGroup = !!groupMeta[h];
+            document.getElementById('target-handle-header').innerText = isGroup ? groupMeta[h].name : h;
+            document.getElementById('target-avatar').innerText = (isGroup ? groupMeta[h].name : h)[0];
+            document.getElementById('chat-meta').innerText = isGroup ? `${groupMeta[h].members.length} Members` : 'Connected via P2P';
             renderMessages();
             updateChatList();
             saveState();
@@ -434,45 +478,104 @@
         function updateChatList() {
             const container = document.getElementById('chat-list');
             const items = Object.keys(messageHistory).map(h => {
-                const isOnline = !!connections[h];
+                const isGroup = !!groupMeta[h];
+                const isOnline = isGroup ? groupMeta[h].members.some(m => m !== myHandle && connections[m]) : !!connections[h];
                 const unread = unreadCounts[h] > 0;
+                const name = isGroup ? groupMeta[h].name : h;
                 return `
                     <div class="chat-item px-6 py-4 cursor-pointer flex items-center gap-4 hover:bg-gray-50 ${activeChatId === h ? 'active' : ''}" onclick="openChat('${h}')">
                         <div class="relative">
-                            <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center font-bold uppercase">${h[0]}</div>
+                            <div class="w-10 h-10 rounded-xl ${isGroup ? 'bg-blue-600 text-white' : 'bg-gray-100'} flex items-center justify-center font-bold uppercase">${name[0]}</div>
                             <div class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-300'}"></div>
                         </div>
                         <div class="flex-1 truncate">
-                            <div class="text-[13px] font-bold">${h}</div>
-                            <div class="text-[10px] text-gray-400 uppercase font-black">${isOnline ? 'Active' : 'Offline'}</div>
+                            <div class="text-[13px] font-bold">${name}</div>
+                            <div class="text-[10px] text-gray-400 uppercase font-black">${isGroup ? 'Group Chat' : (isOnline ? 'Active' : 'Offline')}</div>
                         </div>
-                        ${unread ? '<div class="w-2.5 h-2.5 bg-blue-600 rounded-full shadow-sm"></div>' : ''}
+                        ${unread ? '<div class="w-2.5 h-2.5 bg-blue-600 rounded-full"></div>' : ''}
                     </div>
                 `;
             }).join('');
-            
             container.innerHTML = items;
         }
 
         document.getElementById('new-chat-trigger').onclick = () => document.getElementById('modal-overlay').classList.remove('hidden');
-        document.getElementById('modal-cancel').onclick = () => document.getElementById('modal-overlay').classList.add('hidden');
-        document.getElementById('search-btn').onclick = () => {
+        document.getElementById('new-group-trigger').onclick = () => document.getElementById('group-modal-overlay').classList.remove('hidden');
+        
+        document.querySelectorAll('.modal-cancel').forEach(btn => {
+            btn.onclick = () => {
+                document.getElementById('modal-overlay').classList.add('hidden');
+                document.getElementById('group-modal-overlay').classList.add('hidden');
+                document.getElementById('search-status').innerText = '';
+                document.getElementById('group-search-status').innerText = '';
+            }
+        });
+
+        document.getElementById('search-btn').onclick = async () => {
             const target = document.getElementById('search-input').value.trim().toLowerCase();
-            if (target && target !== myHandle) {
+            const status = document.getElementById('search-status');
+            const btnText = document.getElementById('search-btn-text');
+
+            if (!target || target === myHandle) return;
+            
+            status.innerText = "Checking if user exists...";
+            btnText.innerHTML = `<div class="loader"></div>`;
+
+            const exists = await verifyUserExists(target);
+            
+            if (exists) {
                 if (!messageHistory[target]) messageHistory[target] = [];
-                attemptConnection(target);
                 updateChatList();
                 document.getElementById('modal-overlay').classList.add('hidden');
-                document.getElementById('search-input').value = '';
+                openChat(target);
+            } else {
+                status.innerHTML = `<span class="text-red-500">User not found or offline.</span>`;
             }
+            btnText.innerText = "Add User";
+            document.getElementById('search-input').value = '';
+        };
+
+        document.getElementById('create-group-btn').onclick = async () => {
+            const name = document.getElementById('group-name-input').value.trim();
+            const membersRaw = document.getElementById('group-members-input').value.trim();
+            const status = document.getElementById('group-search-status');
+            const btnText = document.getElementById('group-btn-text');
+
+            if (!name || !membersRaw) return showToast("Name and members required");
+            
+            const members = membersRaw.split(',').map(m => m.trim().toLowerCase()).filter(m => m.length > 0);
+            
+            btnText.innerHTML = `<div class="loader"></div>`;
+            status.innerText = "Verifying members...";
+
+            let validMembers = [myHandle];
+            for(let m of members) {
+                if (m === myHandle) continue;
+                const ok = await verifyUserExists(m);
+                if (ok) validMembers.push(m);
+            }
+
+            if (validMembers.length < 2) {
+                status.innerHTML = `<span class="text-red-500">No valid members found.</span>`;
+                btnText.innerText = "Create";
+                return;
+            }
+
+            const groupId = 'group-' + Date.now();
+            groupMeta[groupId] = { name, members: validMembers };
+            messageHistory[groupId] = [];
+            
+            saveState();
+            updateChatList();
+            openChat(groupId);
+            document.getElementById('group-modal-overlay').classList.add('hidden');
+            btnText.innerText = "Create";
+            document.getElementById('group-name-input').value = '';
+            document.getElementById('group-members-input').value = '';
         };
 
         document.getElementById('user-avatar-btn').onclick = (e) => { e.stopPropagation(); document.getElementById('profile-dropdown').classList.toggle('show'); };
-        document.getElementById('back-btn').onclick = () => { 
-            document.getElementById('sidebar').classList.remove('hidden'); 
-            document.getElementById('chat-window').classList.add('hidden'); 
-            activeChatId = null; 
-        };
+        document.getElementById('back-btn').onclick = () => { document.getElementById('sidebar').classList.remove('hidden'); document.getElementById('chat-window').classList.add('hidden'); activeChatId = null; };
         document.getElementById('delete-account-btn').onclick = () => { localStorage.clear(); location.reload(); };
         document.getElementById('change-handle-btn').onclick = () => { localStorage.removeItem('p2p_handle'); location.reload(); };
 
