@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConnectChat - P2P Direct</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; height: 100vh; overflow: hidden; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .message-bubble { max-width: 80%; word-wrap: break-word; }
+        .g-input { border-bottom: 1px solid #dadce0; transition: border-color 0.2s; }
+        .g-input:focus { border-bottom: 2px solid #1a73e8; outline: none; }
+        #status-toast { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: translate(-50%, 100px); opacity: 0; pointer-events: none; }
+        #status-toast.show { transform: translate(-50%, -32px); opacity: 1; }
+        .chat-item.active { background-color: #f0f7ff; color: #1a73e8; border-left: 4px solid #1a73e8; }
+        .chat-item { border-left: 4px solid transparent; }
+        .capitalize-handle { text-transform: capitalize; }
+    </style>
+</head>
+<body class="text-gray-900">
+
+    <!-- Connection Status Indicator -->
+    <div id="conn-status" class="fixed top-0 left-0 right-0 h-1 bg-blue-500 z-[200] transition-all duration-500 w-0"></div>
+
+    <!-- Identity Setup Overlay -->
+    <div id="identity-overlay" class="fixed inset-0 z-[90] bg-white flex flex-col items-center justify-center p-6">
+        <div class="max-w-md w-full text-center">
+            <div class="mb-8 inline-block p-6 bg-blue-50 rounded-3xl">
+                <i class="fas fa-user-astronaut text-blue-600 text-5xl"></i>
+            </div>
+            <h1 class="text-3xl font-bold mb-3">Welcome to Connect</h1>
+            <p class="text-gray-500 mb-8">Choose a unique handle. This is your digital address for direct P2P messaging.</p>
+            <div class="relative mb-8 text-left">
+                <input type="text" id="my-handle-input" placeholder="e.g. Maverick"
+                       class="w-full py-4 px-2 g-input text-xl placeholder-gray-300">
+            </div>
+            <button id="set-identity-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-semibold shadow-xl transition-all active:scale-95">
+                Start Chatting
+            </button>
+        </div>
+    </div>
+
+    <!-- Main App UI -->
+    <div id="app-ui" class="h-screen flex flex-col bg-white">
+        <header class="h-16 border-b border-gray-100 flex items-center justify-between px-6 shrink-0 bg-white">
+            <div class="flex items-center gap-4">
+                <div class="bg-blue-600 w-8 h-8 rounded-lg flex items-center justify-center shadow-md shadow-blue-200">
+                    <i class="fas fa-paper-plane text-white text-sm"></i>
+                </div>
+                <span class="text-xl font-bold tracking-tight text-gray-900">ConnectChat</span>
+            </div>
+            
+            <div class="flex items-center gap-4 group">
+                <div class="text-right hidden sm:block">
+                    <p id="display-my-handle" class="text-sm font-bold text-gray-900 capitalize-handle">...</p>
+                    <div class="flex items-center justify-end gap-1.5">
+                        <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                        <span class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Live Status</span>
+                    </div>
+                </div>
+                <div id="user-avatar" class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold uppercase border border-blue-200 cursor-default">?</div>
+            </div>
+        </header>
+
+        <div class="flex flex-1 overflow-hidden">
+            <aside id="sidebar" class="w-full md:w-80 border-r border-gray-100 flex flex-col shrink-0 bg-[#ffffff]">
+                <div class="p-5">
+                    <button id="new-chat-trigger" class="flex items-center justify-center gap-2 bg-gray-900 hover:bg-black text-white shadow-lg transition-all px-4 py-4 rounded-2xl text-sm font-bold w-full active:scale-95">
+                        <i class="fas fa-plus-circle text-blue-400"></i>
+                        <span>New Chat</span>
+                    </button>
+                </div>
+                <div class="flex-1 overflow-y-auto hide-scrollbar">
+                    <div class="px-6 py-4">
+                        <span class="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Conversations</span>
+                    </div>
+                    <div id="chat-list" class="space-y-0.5"></div>
+                </div>
+            </aside>
+
+            <main id="chat-window" class="hidden md:flex flex-1 flex-col bg-white relative">
+                <div id="no-chat-selected" class="flex-1 flex flex-col items-center justify-center text-gray-500 p-10 text-center">
+                    <div class="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+                        <i class="fas fa-wind text-4xl text-gray-200"></i>
+                    </div>
+                    <h2 class="text-xl font-bold mb-2 text-gray-800">Your Inbox is Empty</h2>
+                    <p class="max-w-xs text-sm leading-relaxed text-gray-400">Start a "New Chat" and enter your friend's handle to link up directly.</p>
+                </div>
+
+                <div id="active-chat-content" class="hidden flex-1 flex flex-col overflow-hidden">
+                    <header class="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white/80 backdrop-blur-md">
+                        <div class="flex items-center gap-4">
+                            <div id="target-avatar" class="w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center text-sm font-black uppercase">?</div>
+                            <div>
+                                <h2 id="target-handle-header" class="font-bold text-gray-900 capitalize-handle truncate max-w-[250px]">...</h2>
+                                <p id="target-status" class="text-[10px] text-green-500 font-bold uppercase tracking-widest">Active Connection</p>
+                            </div>
+                        </div>
+                        <button class="p-2 text-gray-400 hover:text-gray-600 transition"><i class="fas fa-ellipsis-h"></i></button>
+                    </header>
+                    <div id="messages-container" class="flex-1 overflow-y-auto p-6 space-y-4 hide-scrollbar bg-white"></div>
+                    <footer class="p-6 bg-white shrink-0">
+                        <form id="message-form" class="flex items-center gap-3 bg-gray-100 rounded-2xl px-5 py-1.5 border border-transparent focus-within:border-blue-200 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-50 transition-all">
+                            <input type="text" id="message-input" autocomplete="off" placeholder="Type a message..." class="flex-1 bg-transparent border-none py-3 outline-none text-sm text-gray-800 font-medium">
+                            <button type="submit" class="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center hover:bg-blue-700 transition shadow-lg shadow-blue-100">
+                                <i class="fas fa-paper-plane text-xs"></i>
+                            </button>
+                        </form>
+                    </footer>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- New Chat Modal -->
+    <div id="modal-overlay" class="fixed inset-0 bg-slate-900/40 z-[110] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl relative border border-gray-100">
+            <h3 class="text-2xl font-bold mb-2 text-gray-900">New Chat</h3>
+            <p class="text-sm text-gray-500 mb-8">Type the handle of the person you want to message.</p>
+            <input type="text" id="search-input" placeholder="Recipient handle" class="w-full py-4 g-input text-lg outline-none font-medium mb-8">
+            <div class="flex items-center gap-3">
+                <button id="modal-cancel" class="flex-1 py-3.5 text-gray-500 hover:bg-gray-50 rounded-xl font-bold text-sm transition">Cancel</button>
+                <button id="search-btn" class="flex-1 py-3.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold shadow-lg shadow-blue-100 text-sm transition">Connect</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="status-toast" class="fixed bottom-0 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-8 py-4 rounded-2xl shadow-2xl text-sm z-[150] flex items-center gap-3">
+        <span id="toast-msg">Notice</span>
+    </div>
+
+    <script>
+        let peer = null;
+        let connections = {}; 
+        let messageHistory = {}; 
+        let myHandle = localStorage.getItem('p2p_handle');
+        let activeChatId = null;
+
+        const showToast = (msg) => {
+            const toast = document.getElementById('status-toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        };
+
+        const updateStatusUI = (pct) => {
+            const bar = document.getElementById('conn-status');
+            bar.style.width = pct + '%';
+            if(pct >= 100) setTimeout(() => bar.style.width = '0%', 500);
+        };
+
+        if (myHandle) {
+            initPeer(myHandle);
+        }
+
+        document.getElementById('set-identity-btn').onclick = () => {
+            const input = document.getElementById('my-handle-input').value.trim().toLowerCase();
+            if (!input || input.length < 2) return showToast("Handle is too short");
+            myHandle = input;
+            localStorage.setItem('p2p_handle', myHandle);
+            initPeer(myHandle);
+        };
+
+        function initPeer(id) {
+            updateStatusUI(30);
+            const peerId = 'cc-p2p-' + id;
+            peer = new Peer(peerId);
+
+            peer.on('open', (openedId) => {
+                updateStatusUI(100);
+                document.getElementById('identity-overlay').classList.add('hidden');
+                document.getElementById('display-my-handle').innerText = id;
+                document.getElementById('user-avatar').innerText = id[0];
+                updateChatList();
+            });
+
+            peer.on('connection', (conn) => {
+                setupConnection(conn);
+            });
+
+            peer.on('error', (err) => {
+                console.error(err);
+                if (err.type === 'unavailable-id') {
+                    showToast("That handle is already online.");
+                    document.getElementById('identity-overlay').classList.remove('hidden');
+                } else {
+                    showToast("Connection failed. Try refreshing.");
+                }
+            });
+        }
+
+        function setupConnection(conn) {
+            const remoteHandle = conn.peer.replace('cc-p2p-', '');
+            
+            conn.on('open', () => {
+                connections[remoteHandle] = conn;
+                if (!messageHistory[remoteHandle]) messageHistory[remoteHandle] = [];
+                updateChatList();
+                showToast(`Connected to ${remoteHandle.toUpperCase()}`);
+            });
+
+            conn.on('data', (data) => {
+                if (data.type === 'chat') {
+                    handleIncomingMessage(remoteHandle, data.text);
+                }
+            });
+
+            conn.on('close', () => {
+                delete connections[remoteHandle];
+                updateChatList();
+                if(activeChatId === remoteHandle) {
+                    const statusLabel = document.getElementById('target-status');
+                    statusLabel.innerText = 'Disconnected';
+                    statusLabel.className = "text-[10px] font-bold uppercase tracking-widest text-red-400";
+                }
+            });
+        }
+
+        document.getElementById('new-chat-trigger').onclick = () => document.getElementById('modal-overlay').classList.remove('hidden');
+        document.getElementById('modal-cancel').onclick = () => document.getElementById('modal-overlay').classList.add('hidden');
+
+        document.getElementById('search-btn').onclick = () => {
+            const target = document.getElementById('search-input').value.trim().toLowerCase();
+            if (!target || target === myHandle) return showToast("Invalid handle");
+
+            updateStatusUI(50);
+            const conn = peer.connect('cc-p2p-' + target);
+            setupConnection(conn);
+            
+            setTimeout(() => {
+                if (connections[target]) {
+                    updateStatusUI(100);
+                    document.getElementById('modal-overlay').classList.add('hidden');
+                    openChat(target);
+                } else {
+                    updateStatusUI(0);
+                    showToast("User not found. Check the handle.");
+                }
+            }, 2500);
+        };
+
+        function updateChatList() {
+            const container = document.getElementById('chat-list');
+            const handles = Object.keys(messageHistory);
+            
+            container.innerHTML = handles.length ? '' : '<div class="px-6 py-10 text-center"><p class="text-[11px] text-gray-400">No active chats.</p></div>';
+            
+            handles.forEach(h => {
+                const isOnline = !!connections[h];
+                const isActive = activeChatId === h;
+                const el = document.createElement('div');
+                el.className = `chat-item px-6 py-4 cursor-pointer flex items-center gap-4 transition-all hover:bg-gray-50 ${isActive ? 'active' : ''}`;
+                el.innerHTML = `
+                    <div class="relative">
+                        <div class="w-11 h-11 rounded-xl ${isActive ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'} flex items-center justify-center text-sm font-black uppercase">${h[0]}</div>
+                        <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-300'}"></div>
+                    </div>
+                    <div class="flex-1 truncate">
+                        <div class="font-bold text-[13px] text-gray-900 capitalize-handle">${h}</div>
+                        <div class="text-[11px] opacity-60">${isOnline ? 'Online now' : 'Seen recently'}</div>
+                    </div>
+                `;
+                el.onclick = () => openChat(h);
+                container.appendChild(el);
+            });
+        }
+
+        function openChat(handle) {
+            activeChatId = handle;
+            document.getElementById('no-chat-selected').classList.add('hidden');
+            document.getElementById('active-chat-content').classList.remove('hidden');
+            document.getElementById('chat-window').classList.replace('hidden', 'flex');
+            document.getElementById('sidebar').classList.add('hidden', 'md:flex');
+            
+            document.getElementById('target-handle-header').innerText = handle;
+            document.getElementById('target-avatar').innerText = handle[0];
+            
+            const isOnline = !!connections[handle];
+            const statusLabel = document.getElementById('target-status');
+            statusLabel.innerText = isOnline ? 'Active Connection' : 'Offline';
+            statusLabel.className = `text-[10px] font-bold uppercase tracking-widest ${isOnline ? 'text-green-500' : 'text-red-400'}`;
+            
+            renderMessages();
+            updateChatList();
+        }
+
+        function renderMessages() {
+            const container = document.getElementById('messages-container');
+            container.innerHTML = '';
+            const history = messageHistory[activeChatId] || [];
+            
+            history.forEach((m, idx) => {
+                const isMe = m.sender === 'me';
+                const isGrouped = idx > 0 && history[idx-1].sender === m.sender;
+                const div = document.createElement('div');
+                div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} ${isGrouped ? 'mt-1' : 'mt-4'}`;
+                div.innerHTML = `<div class="message-bubble px-5 py-3 rounded-2xl text-[14px] ${isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-gray-100 text-gray-800 rounded-tl-none'} shadow-sm">${m.text}</div>`;
+                container.appendChild(div);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function handleIncomingMessage(handle, text) {
+            if (!messageHistory[handle]) messageHistory[handle] = [];
+            messageHistory[handle].push({ sender: 'them', text });
+            if (activeChatId === handle) renderMessages();
+            else showToast(`New message from ${handle.toUpperCase()}`);
+        }
+
+        document.getElementById('message-form').onsubmit = (e) => {
+            e.preventDefault();
+            const input = document.getElementById('message-input');
+            const text = input.value.trim();
+            if (!text || !activeChatId) return;
+
+            const conn = connections[activeChatId];
+            if (conn && conn.open) {
+                conn.send({ type: 'chat', text });
+                messageHistory[activeChatId].push({ sender: 'me', text });
+                renderMessages();
+                input.value = '';
+            } else {
+                showToast("Connection lost. User might be offline.");
+            }
+        };
+
+    </script>
+</body>
+</html>
