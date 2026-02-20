@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ConnectChat - Simple but Safe</title>
+    <title>ConnectChat - Professional P2P Networking</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -55,17 +55,10 @@
         .emoji-btn { font-size: 20px; transition: transform 0.2s; cursor: pointer; }
         .emoji-btn:hover { transform: scale(1.3); }
 
-        #messages-container { scroll-behavior: smooth; }
-
         .loader { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top: 2px solid white; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        #suggestion-box { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); transform: scale(0.9); opacity: 0; pointer-events: none; }
-        #suggestion-box.active { transform: scale(1); opacity: 1; pointer-events: auto; }
-
         .read-receipt { font-size: 10px; color: #1a73e8; margin-top: 2px; display: flex; align-items: center; gap: 4px; font-weight: 700; text-transform: uppercase; }
-        
-        /* Forces names to display capitalized without changing underlying ID */
         .capitalize-ui { text-transform: capitalize; }
     </style>
 </head>
@@ -86,16 +79,16 @@
     <div id="identity-overlay" class="fixed inset-0 z-[90] bg-white flex flex-col items-center justify-center p-6">
         <div class="max-w-md w-full text-center">
             <div class="mb-8 inline-block p-6 bg-blue-50 rounded-3xl">
-                <i class="fas fa-comment-dots text-blue-600 text-5xl"></i>
+                <i class="fas fa-shield-alt text-blue-600 text-5xl"></i>
             </div>
-            <h1 class="text-3xl font-bold mb-3">Connect</h1>
-            <p class="text-gray-500 mb-8">Secure, peer-to-peer messaging.</p>
+            <h1 class="text-3xl font-bold mb-3">Secure Connect</h1>
+            <p class="text-gray-500 mb-8">Encrypted, peer-to-peer enterprise communication.</p>
             <div class="space-y-4">
-                <input type="text" id="my-handle-input" placeholder="Enter handle..." class="w-full py-4 px-2 g-input text-xl text-center">
-                <button id="set-identity-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-semibold shadow-xl transition-all">Join Network</button>
+                <input type="text" id="my-handle-input" placeholder="Choose a handle..." class="w-full py-4 px-2 g-input text-xl text-center">
+                <button id="set-identity-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-semibold shadow-xl transition-all">Establish Connection</button>
                 <div id="restore-section" class="hidden">
                     <button id="restore-identity-btn" class="w-full bg-gray-900 text-white py-4 rounded-2xl font-semibold flex items-center justify-center gap-3">
-                        Continue as <span id="restore-handle-name" class="text-blue-400 font-black capitalize-ui"></span>
+                        Resume as <span id="restore-handle-name" class="text-blue-400 font-black capitalize-ui"></span>
                     </button>
                 </div>
             </div>
@@ -106,21 +99,21 @@
     <div id="app-ui" class="h-screen flex flex-col bg-white">
         <header class="h-16 border-b border-gray-100 flex items-center justify-between px-6 bg-white shrink-0">
             <div class="flex items-center gap-4">
-                <div class="bg-blue-600 w-8 h-8 rounded-lg flex items-center justify-center"><i class="fas fa-comment text-white"></i></div>
-                <span class="text-xl font-bold tracking-tight">Connect</span>
+                <div class="bg-blue-600 w-8 h-8 rounded-lg flex items-center justify-center shadow-md"><i class="fas fa-terminal text-white text-xs"></i></div>
+                <span class="text-xl font-bold tracking-tight">ConnectChat</span>
             </div>
             <div class="flex items-center gap-4 relative">
                 <div class="text-right hidden sm:block">
                     <p id="display-my-handle" class="text-sm font-bold capitalize-ui">...</p>
-                    <span class="text-[10px] text-green-500 font-bold uppercase tracking-widest">Live</span>
+                    <span class="text-[10px] text-green-500 font-bold uppercase tracking-widest">System Online</span>
                 </div>
                 <button id="user-avatar-btn" class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold uppercase border border-blue-200 shadow-sm">?</button>
                 <div id="profile-dropdown" class="absolute right-0 top-14 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-[150]">
                     <button id="change-handle-btn" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 flex items-center gap-3 text-sm font-semibold">
-                        <i class="fas fa-id-card text-blue-500"></i> Edit Profile
+                        <i class="fas fa-user-circle text-blue-500"></i> Account Settings
                     </button>
                     <button id="delete-account-btn" class="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 flex items-center gap-3 text-sm font-semibold">
-                        <i class="fas fa-sign-out-alt"></i> Leave Network
+                        <i class="fas fa-power-off"></i> Disconnect
                     </button>
                 </div>
             </div>
@@ -129,20 +122,19 @@
         <div class="flex flex-1 overflow-hidden">
             <aside id="sidebar" class="w-full md:w-80 border-r border-gray-100 flex flex-col bg-white">
                 <div class="p-5 flex gap-2">
-                    <button id="new-chat-trigger" class="flex-1 bg-gray-900 hover:bg-black text-white px-3 py-4 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-gray-200">
-                        <i class="fas fa-plus text-blue-400"></i> DM
+                    <button id="new-chat-trigger" class="flex-1 bg-gray-900 hover:bg-black text-white px-3 py-4 rounded-2xl text-[10px] font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-gray-200 uppercase tracking-wider">
+                        <i class="fas fa-plus text-blue-400"></i> New Direct
                     </button>
-                    <button id="new-group-trigger" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-4 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-100">
-                        <i class="fas fa-users"></i> GROUP
+                    <button id="new-group-trigger" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-4 rounded-2xl text-[10px] font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-100 uppercase tracking-wider">
+                        <i class="fas fa-users"></i> New Group
                     </button>
                 </div>
                 <div class="flex-1 overflow-y-auto hide-scrollbar">
                     <div id="chat-list" class="space-y-0.5"></div>
                 </div>
-                <!-- Suggestion Button -->
                 <div class="p-4 border-t border-gray-50 flex justify-center">
                     <button id="suggestion-trigger" class="text-[10px] font-bold text-gray-400 hover:text-blue-600 transition-colors uppercase tracking-widest flex items-center gap-2">
-                        <i class="fas fa-lightbulb"></i> Send Feedback
+                        <i class="fas fa-envelope-open-text"></i> Submit Feedback
                     </button>
                 </div>
             </aside>
@@ -150,10 +142,10 @@
             <main id="chat-window" class="hidden md:flex flex-1 flex-col bg-white relative">
                 <div id="no-chat-selected" class="flex-1 flex flex-col items-center justify-center text-gray-400 p-10 text-center">
                     <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
-                        <i class="fas fa-quote-right text-gray-200 text-3xl"></i>
+                        <i class="fas fa-layer-group text-gray-200 text-3xl"></i>
                     </div>
-                    <h2 class="text-lg font-black text-gray-900 uppercase tracking-tighter">Your Workspace</h2>
-                    <p class="text-sm mt-1">Select a conversation to start messaging</p>
+                    <h2 class="text-lg font-black text-gray-900 uppercase tracking-tighter">Secure Dashboard</h2>
+                    <p class="text-sm mt-1 max-w-xs">Select a secure channel from the sidebar to begin communicating.</p>
                 </div>
 
                 <div id="active-chat-content" class="hidden flex-1 flex flex-col overflow-hidden">
@@ -161,17 +153,17 @@
                         <div class="flex items-center gap-4">
                             <div id="target-avatar" class="w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center text-sm font-black uppercase">?</div>
                             <div>
-                                <h2 id="target-handle-header" class="font-bold text-gray-900 truncate max-w-[150px] capitalize-ui">...</h2>
-                                <p id="chat-meta" class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">P2P Peer</p>
+                                <h2 id="target-handle-header" class="font-bold text-gray-900 truncate max-w-[200px] capitalize-ui">...</h2>
+                                <p id="chat-meta" class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">End-to-End Encrypted</p>
                             </div>
                         </div>
                         <button class="p-2 text-gray-400 md:hidden" id="back-btn"><i class="fas fa-chevron-left"></i></button>
                     </header>
                     <div id="messages-container" class="flex-1 overflow-y-auto p-6 space-y-4 hide-scrollbar"></div>
                     <footer class="p-6 bg-white">
-                        <form id="message-form" class="flex items-center gap-3 bg-gray-100 rounded-2xl px-5 py-2 ring-1 ring-gray-200">
-                            <input type="text" id="message-input" autocomplete="off" placeholder="Message..." class="flex-1 bg-transparent border-none py-2 outline-none text-sm font-medium">
-                            <button type="submit" class="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"><i class="fas fa-arrow-up text-xs"></i></button>
+                        <form id="message-form" class="flex items-center gap-3 bg-gray-100 rounded-2xl px-5 py-2 ring-1 ring-gray-200 shadow-sm focus-within:ring-blue-400 transition-all">
+                            <input type="text" id="message-input" autocomplete="off" placeholder="Compose message..." class="flex-1 bg-transparent border-none py-2 outline-none text-sm font-medium">
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-colors"><i class="fas fa-paper-plane text-xs"></i></button>
                         </form>
                     </footer>
                 </div>
@@ -179,53 +171,43 @@
         </div>
     </div>
 
-    <!-- Feedback/Suggestion Box -->
-    <div id="suggestion-box" class="fixed bottom-6 right-6 w-72 bg-white rounded-3xl shadow-2xl border border-gray-100 p-5 z-[200]">
-        <div class="flex items-center justify-between mb-4">
-            <h4 class="text-xs font-black uppercase tracking-widest text-gray-900">Feedback</h4>
-            <button onclick="toggleSuggestionBox()" class="text-gray-400 hover:text-gray-900"><i class="fas fa-times"></i></button>
-        </div>
-        <textarea id="suggestion-text" placeholder="Tell us what to improve..." class="w-full h-24 bg-gray-50 rounded-xl p-3 text-sm border-none focus:ring-1 focus:ring-blue-100 resize-none mb-3"></textarea>
-        <button onclick="sendFeedback()" class="w-full bg-gray-900 text-white py-3 rounded-xl text-xs font-bold uppercase tracking-widest">Send</button>
-    </div>
-
-    <!-- Direct Chat Modal -->
+    <!-- Search/Direct Chat Modal -->
     <div id="modal-overlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[110] hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl">
-            <h3 class="text-xl font-bold mb-2">New Chat</h3>
-            <p class="text-xs text-gray-400 mb-6 uppercase tracking-widest font-bold">Search by handle</p>
-            <input type="text" id="search-input" placeholder="Handle name..." class="w-full py-4 g-input text-lg mb-4">
+            <h3 class="text-xl font-bold mb-2">Initialize Contact</h3>
+            <p class="text-xs text-gray-400 mb-6 uppercase tracking-widest font-bold">Search global peer registry</p>
+            <input type="text" id="search-input" placeholder="Enter recipient handle..." class="w-full py-4 g-input text-lg mb-4">
             <div id="search-status" class="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-6 text-center h-4"></div>
             <div class="flex gap-3">
-                <button class="modal-cancel flex-1 py-3 text-gray-400 font-bold text-xs uppercase">Cancel</button>
-                <button id="search-btn" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2">
-                    <span id="search-btn-text">Connect</span>
+                <button class="modal-cancel flex-1 py-3 text-gray-400 font-bold text-xs uppercase hover:text-gray-600 transition-colors">Cancel</button>
+                <button id="search-btn" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2 shadow-lg hover:bg-blue-700 transition-all">
+                    <span id="search-btn-text">Search</span>
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Group Chat Modal -->
+    <!-- Group Initialization Modal -->
     <div id="group-modal-overlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[110] hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl">
-            <h3 class="text-xl font-bold mb-2">New Group</h3>
-            <p class="text-xs text-gray-400 mb-6 uppercase tracking-widest font-bold">Collaborative space</p>
+            <h3 class="text-xl font-bold mb-2">Create Channel</h3>
+            <p class="text-xs text-gray-400 mb-6 uppercase tracking-widest font-bold">Encrypted multi-peer workspace</p>
             <div class="space-y-4">
-                <input type="text" id="group-name-input" placeholder="Group name..." class="w-full py-4 g-input text-lg">
-                <input type="text" id="group-members-input" placeholder="Handles (comma separated)" class="w-full py-4 g-input text-lg">
+                <input type="text" id="group-name-input" placeholder="Channel name..." class="w-full py-4 g-input text-lg">
+                <textarea id="group-members-input" placeholder="Members (one per line)..." class="w-full h-32 bg-gray-50 rounded-xl p-4 text-sm border-none focus:ring-1 focus:ring-blue-100 resize-none font-medium"></textarea>
                 <div id="group-search-status" class="text-[10px] font-black uppercase tracking-widest text-gray-400 text-center h-4"></div>
             </div>
             <div class="flex gap-3 mt-6">
-                <button class="modal-cancel flex-1 py-3 text-gray-400 font-bold text-xs uppercase">Cancel</button>
-                <button id="create-group-btn" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2">
-                    <span id="group-btn-text">Create</span>
+                <button class="modal-cancel flex-1 py-3 text-gray-400 font-bold text-xs uppercase hover:text-gray-600 transition-colors">Cancel</button>
+                <button id="create-group-btn" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2 shadow-lg hover:bg-blue-700 transition-all">
+                    <span id="group-btn-text">Establish</span>
                 </button>
             </div>
         </div>
     </div>
 
     <div id="status-toast" class="fixed bottom-0 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-8 py-4 rounded-2xl shadow-2xl text-[10px] font-bold uppercase tracking-widest z-[150] flex items-center gap-3">
-        <span id="toast-msg">Notice</span>
+        <span id="toast-msg">Notification</span>
     </div>
 
     <script>
@@ -268,7 +250,7 @@
 
         document.getElementById('set-identity-btn').onclick = () => {
             const input = document.getElementById('my-handle-input').value.trim().toLowerCase();
-            if (input.length < 2) return showToast("Handle too short");
+            if (input.length < 2) return showToast("Handle must be at least 2 characters");
             myHandle = input;
             saveState();
             initPeer(myHandle);
@@ -288,50 +270,32 @@
                 document.getElementById('user-avatar-btn').innerText = id[0];
                 updateChatList();
                 
-                Object.keys(messageHistory).forEach(h => {
-                    if (!groupMeta[h]) attemptConnection(h);
-                });
-                Object.values(groupMeta).forEach(g => {
-                    g.members.forEach(m => {
-                        if (m !== myHandle) attemptConnection(m);
-                    });
+                // Re-establish connections for all known chats
+                Object.keys(messageHistory).forEach(chatId => {
+                    if (groupMeta[chatId]) {
+                        groupMeta[chatId].members.forEach(m => attemptConnection(m));
+                    } else {
+                        attemptConnection(chatId);
+                    }
                 });
             });
+
             peer.on('connection', setupConnection);
             peer.on('error', (err) => {
-                if(err.type === 'unavailable-id') showToast("ID ALREADY TAKEN");
-            });
-        }
-
-        function verifyUserExists(handle) {
-            return new Promise((resolve) => {
-                const conn = peer.connect('cc-p2p-' + handle);
-                const timeout = setTimeout(() => {
-                    conn.close();
-                    resolve(false);
-                }, 4000);
-
-                conn.on('open', () => {
-                    clearTimeout(timeout);
-                    setupConnection(conn);
-                    resolve(true);
-                });
-                conn.on('error', () => {
-                    clearTimeout(timeout);
-                    resolve(false);
-                });
+                if(err.type === 'unavailable-id') showToast("IDENTIFIER ALREADY IN USE");
+                else showToast("NETWORK ERROR: " + err.type.toUpperCase());
             });
         }
 
         function attemptConnection(target) {
             if (connections[target] || target === myHandle) return;
-            setupConnection(peer.connect('cc-p2p-' + target));
+            const conn = peer.connect('cc-p2p-' + target);
+            setupConnection(conn);
         }
 
         function setupConnection(conn) {
             const remoteHandle = conn.peer.replace('cc-p2p-', '');
-            if (connections[remoteHandle]) return;
-
+            
             conn.on('open', () => {
                 connections[remoteHandle] = conn;
                 conn.send({ type: 'handshake', from: myHandle });
@@ -349,19 +313,54 @@
                 }
             });
 
-            conn.on('close', () => { delete connections[remoteHandle]; updateChatList(); });
+            conn.on('close', () => { 
+                delete connections[remoteHandle]; 
+                updateChatList(); 
+            });
+        }
+
+        async function verifyUserExists(handle) {
+            if (connections[handle]) return true;
+            return new Promise((resolve) => {
+                const conn = peer.connect('cc-p2p-' + handle);
+                const timeout = setTimeout(() => { conn.close(); resolve(false); }, 4000);
+                conn.on('open', () => { clearTimeout(timeout); setupConnection(conn); resolve(true); });
+                conn.on('error', () => { clearTimeout(timeout); resolve(false); });
+            });
         }
 
         function handleIncoming(chatId, data) {
-            if (data.groupId && !groupMeta[chatId]) {
-                groupMeta[chatId] = { name: data.groupName.toLowerCase(), members: data.members };
+            // CRITICAL: If message belongs to a group we don't know, auto-create it
+            if (data.groupId && !groupMeta[data.groupId]) {
+                groupMeta[data.groupId] = { 
+                    name: data.groupName || 'Unnamed Channel', 
+                    members: data.members 
+                };
+                messageHistory[data.groupId] = [];
+                // Connect to all members of this newly discovered group
+                data.members.forEach(m => attemptConnection(m));
             }
+
             if (!messageHistory[chatId]) messageHistory[chatId] = [];
             if (messageHistory[chatId].find(m => m.id === data.id)) return;
-            messageHistory[chatId].push({ ...data, sender: data.from || 'them', reactions: [] });
-            if (activeChatId === chatId) renderMessages(); 
-            else unreadCounts[chatId] = (unreadCounts[chatId]||0)+1;
-            connections[data.from]?.send({ type: 'receipt', id: data.id, groupId: data.groupId });
+            
+            messageHistory[chatId].push({ 
+                ...data, 
+                sender: data.from === myHandle ? 'me' : 'them', 
+                reactions: data.reactions || [] 
+            });
+
+            if (activeChatId === chatId) {
+                renderMessages(); 
+            } else {
+                unreadCounts[chatId] = (unreadCounts[chatId] || 0) + 1;
+            }
+            
+            // Ack the message back to original sender
+            if (connections[data.from]) {
+                connections[data.from].send({ type: 'receipt', id: data.id, groupId: data.groupId });
+            }
+            
             saveState(); 
             updateChatList();
         }
@@ -386,8 +385,9 @@
             if (!text || !activeChatId) return;
 
             const isGroup = !!groupMeta[activeChatId];
+            const msgId = Date.now() + Math.random();
             const msg = { 
-                id: Date.now() + Math.random(), 
+                id: msgId, 
                 text, 
                 timestamp: Date.now(), 
                 from: myHandle,
@@ -397,16 +397,23 @@
             };
 
             if (isGroup) {
+                const meta = groupMeta[activeChatId];
                 msg.groupId = activeChatId;
-                msg.groupName = groupMeta[activeChatId].name;
-                msg.members = groupMeta[activeChatId].members;
-                groupMeta[activeChatId].members.forEach(m => {
-                    if (m !== myHandle) connections[m]?.send({ type: 'chat', ...msg });
+                msg.groupName = meta.name;
+                msg.members = meta.members; // Include member list so recipients can auto-join
+                
+                meta.members.forEach(m => {
+                    if (m !== myHandle && connections[m]) {
+                        connections[m].send({ type: 'chat', ...msg });
+                    }
                 });
             } else {
-                connections[activeChatId]?.send({ type: 'chat', ...msg });
+                if (connections[activeChatId]) {
+                    connections[activeChatId].send({ type: 'chat', ...msg });
+                }
             }
             
+            if (!messageHistory[activeChatId]) messageHistory[activeChatId] = [];
             messageHistory[activeChatId].push(msg);
             input.value = '';
             renderMessages();
@@ -432,73 +439,13 @@
                             <span class="block">${m.text}</span>
                             <div class="reaction-container">${reactionsHtml}</div>
                         </div>
-                        ${isLastSynced ? `<div class="read-receipt"><i class="fas fa-check-circle"></i> Read</div>` : ''}
+                        ${isLastSynced ? `<div class="read-receipt"><i class="fas fa-check-double"></i> Received</div>` : ''}
                     </div>
                 `;
             }).join('');
 
             container.innerHTML = html;
             container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-        }
-
-        function showReactionPicker(e, msgId) {
-            e.stopPropagation();
-            reactionTargetId = msgId;
-            const picker = document.getElementById('reaction-picker');
-            const rect = e.currentTarget.getBoundingClientRect();
-            const pickerWidth = 240;
-            let x = rect.left + (rect.width / 2) - (pickerWidth / 2);
-            let y = rect.top - 60;
-            x = Math.max(10, Math.min(x, window.innerWidth - pickerWidth - 10));
-            if (y < 10) y = rect.bottom + 10;
-            picker.style.left = `${x}px`;
-            picker.style.top = `${y}px`;
-            picker.classList.add('show');
-        }
-
-        function reactToMessage(emoji) {
-            if (!reactionTargetId || !activeChatId) return;
-            const msg = messageHistory[activeChatId].find(m => m.id == reactionTargetId);
-            if (msg) {
-                const isGroup = !!groupMeta[activeChatId];
-                const reactionData = { type: 'reaction', messageId: reactionTargetId, emoji, from: myHandle };
-                if (isGroup) {
-                    reactionData.groupId = activeChatId;
-                    groupMeta[activeChatId].members.forEach(m => { if(m !== myHandle) connections[m]?.send(reactionData); });
-                } else {
-                    connections[activeChatId]?.send(reactionData);
-                }
-                if (!msg.reactions) msg.reactions = [];
-                const idx = msg.reactions.findIndex(r => r.emoji === emoji && r.user === myHandle);
-                if (idx > -1) msg.reactions.splice(idx, 1);
-                else msg.reactions.push({ emoji, user: myHandle });
-                renderMessages();
-                saveState();
-            }
-            closePickers();
-        }
-
-        function closePickers() {
-            document.getElementById('reaction-picker').classList.remove('show');
-            document.getElementById('profile-dropdown').classList.remove('show');
-        }
-
-        document.addEventListener('click', closePickers);
-
-        function openChat(h) {
-            activeChatId = h;
-            unreadCounts[h] = 0;
-            document.getElementById('no-chat-selected').classList.add('hidden');
-            document.getElementById('active-chat-content').classList.remove('hidden');
-            document.getElementById('chat-window').classList.replace('hidden', 'flex');
-            if (window.innerWidth < 768) document.getElementById('sidebar').classList.add('hidden');
-            const isGroup = !!groupMeta[h];
-            document.getElementById('target-handle-header').innerText = isGroup ? groupMeta[h].name : h;
-            document.getElementById('target-avatar').innerText = (isGroup ? groupMeta[h].name : h)[0];
-            document.getElementById('chat-meta').innerText = isGroup ? `${groupMeta[h].members.length} Members` : 'Active Connection';
-            renderMessages();
-            updateChatList();
-            saveState();
         }
 
         function updateChatList() {
@@ -516,7 +463,7 @@
                         </div>
                         <div class="flex-1 truncate">
                             <div class="text-[13px] font-bold capitalize-ui">${name}</div>
-                            <div class="text-[9px] text-gray-400 uppercase font-black tracking-widest">${isGroup ? 'Group' : (isOnline ? 'Active' : 'Standby')}</div>
+                            <div class="text-[9px] text-gray-400 uppercase font-black tracking-widest">${isGroup ? 'Channel' : (isOnline ? 'Online' : 'Offline')}</div>
                         </div>
                         ${unread ? '<div class="w-2 h-2 bg-blue-600 rounded-full shadow-lg shadow-blue-200"></div>' : ''}
                     </div>
@@ -525,41 +472,23 @@
             container.innerHTML = items;
         }
 
-        document.getElementById('new-chat-trigger').onclick = () => document.getElementById('modal-overlay').classList.remove('hidden');
-        document.getElementById('new-group-trigger').onclick = () => document.getElementById('group-modal-overlay').classList.remove('hidden');
-        
-        document.querySelectorAll('.modal-cancel').forEach(btn => {
-            btn.onclick = () => {
-                document.getElementById('modal-overlay').classList.add('hidden');
-                document.getElementById('group-modal-overlay').classList.add('hidden');
-                document.getElementById('search-status').innerText = '';
-                document.getElementById('group-search-status').innerText = '';
-            }
-        });
-
-        document.getElementById('search-btn').onclick = async () => {
-            const target = document.getElementById('search-input').value.trim().toLowerCase();
-            const status = document.getElementById('search-status');
-            const btnText = document.getElementById('search-btn-text');
-
-            if (!target || target === myHandle) return;
+        function openChat(h) {
+            activeChatId = h;
+            unreadCounts[h] = 0;
+            document.getElementById('no-chat-selected').classList.add('hidden');
+            document.getElementById('active-chat-content').classList.remove('hidden');
+            document.getElementById('chat-window').classList.replace('hidden', 'flex');
+            if (window.innerWidth < 768) document.getElementById('sidebar').classList.add('hidden');
             
-            status.innerText = "VERIFYING USER...";
-            btnText.innerHTML = `<div class="loader"></div>`;
-
-            const exists = await verifyUserExists(target);
+            const isGroup = !!groupMeta[h];
+            document.getElementById('target-handle-header').innerText = isGroup ? groupMeta[h].name : h;
+            document.getElementById('target-avatar').innerText = (isGroup ? groupMeta[h].name : h)[0];
+            document.getElementById('chat-meta').innerText = isGroup ? `${groupMeta[h].members.length} Members` : 'P2P Contact';
             
-            if (exists) {
-                if (!messageHistory[target]) messageHistory[target] = [];
-                updateChatList();
-                document.getElementById('modal-overlay').classList.add('hidden');
-                openChat(target);
-            } else {
-                status.innerHTML = `<span class="text-red-500">USER UNREACHABLE</span>`;
-            }
-            btnText.innerText = "CONNECT";
-            document.getElementById('search-input').value = '';
-        };
+            renderMessages();
+            updateChatList();
+            saveState();
+        }
 
         document.getElementById('create-group-btn').onclick = async () => {
             const name = document.getElementById('group-name-input').value.trim().toLowerCase();
@@ -567,58 +496,121 @@
             const status = document.getElementById('group-search-status');
             const btnText = document.getElementById('group-btn-text');
 
-            if (!name || !membersRaw) return showToast("INPUT REQUIRED");
+            if (!name || !membersRaw) return showToast("FILL ALL FIELDS");
             
-            const members = membersRaw.split(',').map(m => m.trim().toLowerCase()).filter(m => m.length > 0);
-            
+            const members = membersRaw.split(/[\n,]+/).map(m => m.trim().toLowerCase()).filter(m => m.length > 0);
             btnText.innerHTML = `<div class="loader"></div>`;
-            status.innerText = "PINGING MEMBERS...";
+            status.innerText = "VERIFYING MEMBERS...";
 
             let validMembers = [myHandle];
             for(let m of members) {
                 if (m === myHandle) continue;
-                const ok = await verifyUserExists(m);
-                if (ok) validMembers.push(m);
+                // If we don't know them, try a quick ping
+                const exists = await verifyUserExists(m);
+                if (exists) validMembers.push(m);
             }
 
             if (validMembers.length < 2) {
-                status.innerHTML = `<span class="text-red-500">NO MEMBERS ACTIVE</span>`;
-                btnText.innerText = "CREATE";
+                status.innerHTML = `<span class="text-red-500">NEED AT LEAST 1 OTHER PEER</span>`;
+                btnText.innerText = "ESTABLISH";
                 return;
             }
 
-            const groupId = 'group-' + Date.now();
+            const groupId = 'group-' + Math.random().toString(36).substr(2, 9);
             groupMeta[groupId] = { name, members: validMembers };
             messageHistory[groupId] = [];
             
+            // Send initial broadcast message
+            const welcomeMsg = {
+                id: Date.now() + Math.random(),
+                text: `Encrypted channel established: ${name}`,
+                timestamp: Date.now(),
+                from: myHandle,
+                sender: 'me',
+                groupId: groupId,
+                groupName: name,
+                members: validMembers
+            };
+            
+            messageHistory[groupId].push(welcomeMsg);
+
+            validMembers.forEach(m => {
+                if (m !== myHandle && connections[m]) {
+                    connections[m].send({ type: 'chat', ...welcomeMsg });
+                }
+            });
+
             saveState();
             updateChatList();
             openChat(groupId);
             document.getElementById('group-modal-overlay').classList.add('hidden');
-            btnText.innerText = "CREATE";
+            btnText.innerText = "ESTABLISH";
             document.getElementById('group-name-input').value = '';
             document.getElementById('group-members-input').value = '';
         };
 
-        // Utility functions for UI
-        function toggleSuggestionBox() {
-            document.getElementById('suggestion-box').classList.toggle('active');
+        function showReactionPicker(e, msgId) {
+            e.stopPropagation();
+            reactionTargetId = msgId;
+            const picker = document.getElementById('reaction-picker');
+            const rect = e.currentTarget.getBoundingClientRect();
+            picker.style.left = `${Math.min(window.innerWidth - 250, Math.max(10, rect.left))}px`;
+            picker.style.top = `${rect.top - 60}px`;
+            picker.classList.add('show');
         }
 
-        function sendFeedback() {
-            const txt = document.getElementById('suggestion-text').value;
-            if(!txt) return;
-            showToast("FEEDBACK SENT");
-            document.getElementById('suggestion-text').value = '';
-            toggleSuggestionBox();
+        function reactToMessage(emoji) {
+            if (!reactionTargetId || !activeChatId) return;
+            const msg = messageHistory[activeChatId].find(m => m.id == reactionTargetId);
+            if (msg) {
+                const reactionData = { type: 'reaction', messageId: reactionTargetId, emoji, from: myHandle };
+                if (groupMeta[activeChatId]) {
+                    reactionData.groupId = activeChatId;
+                    groupMeta[activeChatId].members.forEach(m => { if(m !== myHandle && connections[m]) connections[m].send(reactionData); });
+                } else if (connections[activeChatId]) {
+                    connections[activeChatId].send(reactionData);
+                }
+                if (!msg.reactions) msg.reactions = [];
+                const idx = msg.reactions.findIndex(r => r.emoji === emoji && r.user === myHandle);
+                if (idx > -1) msg.reactions.splice(idx, 1);
+                else msg.reactions.push({ emoji, user: myHandle });
+                renderMessages();
+                saveState();
+            }
+            closePickers();
         }
 
-        document.getElementById('suggestion-trigger').onclick = (e) => { e.stopPropagation(); toggleSuggestionBox(); };
+        function closePickers() {
+            document.getElementById('reaction-picker').classList.remove('show');
+            document.getElementById('profile-dropdown').classList.remove('show');
+        }
+
+        document.getElementById('search-btn').onclick = async () => {
+            const target = document.getElementById('search-input').value.trim().toLowerCase();
+            const status = document.getElementById('search-status');
+            const btnText = document.getElementById('search-btn-text');
+            if (!target || target === myHandle) return;
+            status.innerText = "LOCATING NODE...";
+            btnText.innerHTML = `<div class="loader"></div>`;
+            const exists = await verifyUserExists(target);
+            if (exists) {
+                if (!messageHistory[target]) messageHistory[target] = [];
+                document.getElementById('modal-overlay').classList.add('hidden');
+                openChat(target);
+            } else {
+                status.innerHTML = `<span class="text-red-500">NODE NOT FOUND</span>`;
+            }
+            btnText.innerText = "Search";
+        };
+
+        document.getElementById('new-chat-trigger').onclick = () => document.getElementById('modal-overlay').classList.remove('hidden');
+        document.getElementById('new-group-trigger').onclick = () => document.getElementById('group-modal-overlay').classList.remove('hidden');
+        document.querySelectorAll('.modal-cancel').forEach(btn => btn.onclick = () => { document.querySelectorAll('.fixed.inset-0').forEach(m => {if(!m.id.includes('identity')) m.classList.add('hidden')}); });
+        document.addEventListener('click', closePickers);
         document.getElementById('user-avatar-btn').onclick = (e) => { e.stopPropagation(); document.getElementById('profile-dropdown').classList.toggle('show'); };
         document.getElementById('back-btn').onclick = () => { document.getElementById('sidebar').classList.remove('hidden'); document.getElementById('chat-window').classList.add('hidden'); activeChatId = null; };
         document.getElementById('delete-account-btn').onclick = () => { localStorage.clear(); location.reload(); };
         document.getElementById('change-handle-btn').onclick = () => { localStorage.removeItem('p2p_handle'); location.reload(); };
-
     </script>
 </body>
 </html>
