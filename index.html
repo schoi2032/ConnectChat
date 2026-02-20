@@ -12,30 +12,83 @@
         body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; height: 100vh; overflow: hidden; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .message-bubble { max-width: 85%; word-wrap: break-word; position: relative; }
+        
+        /* Optimized Message Bubbles */
+        .message-bubble { 
+            max-width: 85%; 
+            word-wrap: break-word; 
+            position: relative; 
+            transition: transform 0.1s; 
+            cursor: pointer;
+            animation: slideUp 0.2s ease-out forwards;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-bubble:active { transform: scale(0.98); }
         .g-input { border-bottom: 1px solid #dadce0; transition: border-color 0.2s; }
         .g-input:focus { border-bottom: 2px solid #1a73e8; outline: none; }
+        
         #status-toast { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: translate(-50%, 100px); opacity: 0; pointer-events: none; }
         #status-toast.show { transform: translate(-50%, -32px); opacity: 1; }
+        
         .chat-item.active { background-color: #f0f7ff; color: #1a73e8; border-left: 4px solid #1a73e8; }
-        .chat-item { border-left: 4px solid transparent; }
+        .chat-item { border-left: 4px solid transparent; transition: background 0.2s; }
         .capitalize-handle { text-transform: capitalize; }
+        
         #profile-dropdown { transition: all 0.2s ease-out; transform: translateY(-10px); opacity: 0; pointer-events: none; }
         #profile-dropdown.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
-        .unread-indicator { width: 10px; height: 10px; background-color: #3b82f6; border-radius: 9999px; }
-        .delete-chat-btn { opacity: 0; transition: opacity 0.2s; }
-        .chat-item:hover .delete-chat-btn { opacity: 1; }
-        .read-receipt-avatar { width: 18px; height: 18px; border-radius: 6px; font-size: 10px; font-weight: 900; display: flex; align-items: center; justify-content: center; margin-top: 4px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .editable:hover { cursor: pointer; filter: brightness(0.95); }
-        .editable::after { content: 'Click to edit'; position: absolute; bottom: -18px; right: 0; font-size: 9px; opacity: 0; transition: opacity 0.2s; color: #94a3b8; }
-        .editable:hover::after { opacity: 1; }
+        
+        .read-receipt-avatar { width: 16px; height: 16px; border-radius: 5px; font-size: 9px; font-weight: 900; display: flex; align-items: center; justify-content: center; margin-top: 2px; border: 1.5px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        
+        /* Reaction UI */
+        .reaction-container { position: absolute; bottom: -12px; display: flex; gap: 2px; pointer-events: none; z-index: 10; }
+        .is-me .reaction-container { right: 8px; flex-direction: row-reverse; }
+        .is-them .reaction-container { left: 8px; }
+        .reaction-badge { background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 2px 6px; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); animation: pop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: auto; }
+        
+        @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+
+        #reaction-picker { 
+            position: fixed; 
+            z-index: 300; 
+            background: white; 
+            border-radius: 30px; 
+            padding: 8px 12px; 
+            display: flex; 
+            gap: 10px; 
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); 
+            border: 1px solid #f1f5f9;
+            transform: translateY(10px);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #reaction-picker.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
+        .emoji-btn { font-size: 20px; transition: transform 0.2s; cursor: pointer; }
+        .emoji-btn:hover { transform: scale(1.3); }
+
+        /* Smoother scrolling */
+        #messages-container { scroll-behavior: smooth; }
     </style>
 </head>
 <body class="text-gray-900">
 
     <div id="conn-status" class="fixed top-0 left-0 right-0 h-1 bg-blue-500 z-[200] transition-all duration-500 w-0"></div>
 
-    <!-- Setup Overlay -->
+    <!-- Reaction Picker -->
+    <div id="reaction-picker">
+        <span class="emoji-btn" onclick="reactToMessage('👍')">👍</span>
+        <span class="emoji-btn" onclick="reactToMessage('❤️')">❤️</span>
+        <span class="emoji-btn" onclick="reactToMessage('😂')">😂</span>
+        <span class="emoji-btn" onclick="reactToMessage('😮')">😮</span>
+        <span class="emoji-btn" onclick="reactToMessage('😢')">😢</span>
+        <span class="emoji-btn" onclick="reactToMessage('🔥')">🔥</span>
+    </div>
+
+    <!-- Identity Overlay -->
     <div id="identity-overlay" class="fixed inset-0 z-[90] bg-white flex flex-col items-center justify-center p-6">
         <div class="max-w-md w-full text-center">
             <div class="mb-8 inline-block p-6 bg-blue-50 rounded-3xl">
@@ -43,107 +96,76 @@
             </div>
             <h1 class="text-3xl font-bold mb-3">Welcome to Connect</h1>
             <p class="text-gray-500 mb-8">Choose a unique handle for your messages.</p>
-            
-            <div id="new-user-section" class="space-y-4">
-                <div class="relative text-left mb-6">
-                    <input type="text" id="my-handle-input" placeholder="Enter a new handle..." class="w-full py-4 px-2 g-input text-xl placeholder-gray-300">
-                </div>
-                
-                <div class="flex flex-col gap-3">
-                    <button id="set-identity-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-semibold shadow-xl transition-all active:scale-95">
-                        Start Chatting
+            <div class="space-y-4">
+                <input type="text" id="my-handle-input" placeholder="Enter handle..." class="w-full py-4 px-2 g-input text-xl text-center">
+                <button id="set-identity-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-semibold shadow-xl transition-all">Start Chatting</button>
+                <div id="restore-section" class="hidden">
+                    <button id="restore-identity-btn" class="w-full bg-gray-900 text-white py-4 rounded-2xl font-semibold flex items-center justify-center gap-3">
+                        Continue as <span id="restore-handle-name" class="text-blue-400 font-black"></span>
                     </button>
-
-                    <div id="restore-section" class="hidden">
-                        <button id="restore-identity-btn" class="w-full bg-gray-900 hover:bg-black text-white py-4 rounded-2xl font-semibold transition-all active:scale-95 flex items-center justify-center gap-3 shadow-lg">
-                            <i class="fas fa-user-check text-blue-400"></i>
-                            <span>Continue as <span id="restore-handle-name" class="text-blue-400 font-black"></span></span>
-                        </button>
-                    </div>
                 </div>
-                
-                <p id="restore-hint" class="hidden mt-4 text-[11px] text-gray-400">Handle detected in your browser storage.</p>
             </div>
         </div>
     </div>
 
-    <!-- Main App -->
+    <!-- Main App UI -->
     <div id="app-ui" class="h-screen flex flex-col bg-white">
-        <header class="h-16 border-b border-gray-100 flex items-center justify-between px-6 shrink-0 bg-white">
+        <header class="h-16 border-b border-gray-100 flex items-center justify-between px-6 bg-white shrink-0">
             <div class="flex items-center gap-4">
-                <div class="bg-blue-600 w-8 h-8 rounded-lg flex items-center justify-center shadow-md shadow-blue-200">
-                    <i class="fas fa-comment text-white text-sm"></i>
-                </div>
-                <span class="text-xl font-bold tracking-tight text-gray-900">ConnectChat</span>
+                <div class="bg-blue-600 w-8 h-8 rounded-lg flex items-center justify-center"><i class="fas fa-comment text-white"></i></div>
+                <span class="text-xl font-bold tracking-tight">ConnectChat</span>
             </div>
-            
             <div class="flex items-center gap-4 relative">
                 <div class="text-right hidden sm:block">
-                    <p id="display-my-handle" class="text-sm font-bold text-gray-900 capitalize-handle">...</p>
-                    <div class="flex items-center justify-end gap-1.5">
-                        <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                        <span class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter" id="global-status-text">Live Status</span>
-                    </div>
+                    <p id="display-my-handle" class="text-sm font-bold capitalize-handle">...</p>
+                    <span class="text-[10px] text-green-500 font-bold uppercase tracking-tighter">Online</span>
                 </div>
-                <button id="user-avatar-btn" class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold uppercase border border-blue-200 cursor-pointer">?</button>
-                
+                <button id="user-avatar-btn" class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold uppercase border border-blue-200">?</button>
                 <div id="profile-dropdown" class="absolute right-0 top-14 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-[150]">
-                    <button id="change-handle-btn" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-3 text-sm font-semibold">
-                        <i class="fas fa-id-card text-xs text-blue-500"></i>
-                        <span>Change Handle</span>
+                    <button id="change-handle-btn" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 flex items-center gap-3 text-sm font-semibold">
+                        <i class="fas fa-id-card text-blue-500"></i> Change Handle
                     </button>
-                    <div class="h-[1px] bg-gray-100 my-1"></div>
-                    <button id="delete-account-btn" class="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 transition-colors flex items-center gap-3 text-sm font-semibold">
-                        <i class="fas fa-user-slash text-xs"></i>
-                        <span>Delete Account</span>
+                    <button id="delete-account-btn" class="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 flex items-center gap-3 text-sm font-semibold">
+                        <i class="fas fa-trash"></i> Delete Account
                     </button>
                 </div>
             </div>
         </header>
 
         <div class="flex flex-1 overflow-hidden">
-            <aside id="sidebar" class="w-full md:w-80 border-r border-gray-100 flex flex-col shrink-0 bg-white">
+            <aside id="sidebar" class="w-full md:w-80 border-r border-gray-100 flex flex-col bg-white">
                 <div class="p-5">
-                    <button id="new-chat-trigger" class="flex items-center justify-center gap-2 bg-gray-900 hover:bg-black text-white shadow-lg transition-all px-4 py-4 rounded-2xl text-sm font-bold w-full active:scale-95">
-                        <i class="fas fa-plus-circle text-blue-400"></i>
-                        <span>New Chat</span>
+                    <button id="new-chat-trigger" class="bg-gray-900 hover:bg-black text-white px-4 py-4 rounded-2xl text-sm font-bold w-full transition-all flex items-center justify-center gap-2">
+                        <i class="fas fa-plus-circle text-blue-400"></i> New Chat
                     </button>
                 </div>
                 <div class="flex-1 overflow-y-auto hide-scrollbar">
-                    <div class="px-6 py-4 flex justify-between items-center border-b border-gray-50 mb-2">
-                        <span class="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Conversations</span>
-                    </div>
                     <div id="chat-list" class="space-y-0.5"></div>
                 </div>
             </aside>
 
             <main id="chat-window" class="hidden md:flex flex-1 flex-col bg-white relative">
-                <div id="no-chat-selected" class="flex-1 flex flex-col items-center justify-center text-gray-500 p-10 text-center">
-                    <div class="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6">
-                        <i class="fas fa-comment-slash text-4xl text-gray-200"></i>
-                    </div>
-                    <h2 class="text-xl font-bold mb-2 text-gray-800">Your Inbox</h2>
-                    <p class="max-w-xs text-sm leading-relaxed text-gray-400">Connect to start chatting. Your data stays on your device.</p>
+                <div id="no-chat-selected" class="flex-1 flex flex-col items-center justify-center text-gray-400 p-10 text-center">
+                    <i class="fas fa-comment-dots text-5xl mb-4 text-gray-100"></i>
+                    <h2 class="text-lg font-bold text-gray-800">Select a Chat</h2>
                 </div>
 
                 <div id="active-chat-content" class="hidden flex-1 flex flex-col overflow-hidden">
-                    <header class="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white/80 backdrop-blur-md">
+                    <header class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white/80 backdrop-blur-md">
                         <div class="flex items-center gap-4">
-                            <div id="target-avatar" class="w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center text-sm font-black uppercase">?</div>
+                            <div id="target-avatar" class="w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center text-sm font-black">?</div>
                             <div>
-                                <h2 id="target-handle-header" class="font-bold text-gray-900 capitalize-handle truncate max-w-[250px]">...</h2>
-                                <p id="target-status" class="text-[10px] font-bold uppercase tracking-widest">End-to-End Encryption</p>
+                                <h2 id="target-handle-header" class="font-bold text-gray-900 capitalize-handle truncate max-w-[150px]">...</h2>
+                                <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Connected via P2P</p>
                             </div>
                         </div>
-                        <button class="p-2 text-gray-400 hover:text-gray-600" id="back-btn"><i class="fas fa-chevron-left"></i></button>
+                        <button class="p-2 text-gray-400" id="back-btn"><i class="fas fa-chevron-left"></i></button>
                     </header>
-                    <div id="messages-container" class="flex-1 overflow-y-auto p-6 space-y-4 hide-scrollbar bg-white"></div>
-                    <footer class="p-6 bg-white shrink-0 border-t border-gray-50">
-                        <form id="message-form" class="flex items-center gap-3 bg-gray-100 rounded-2xl px-5 py-1.5 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-50 transition-all border border-transparent focus-within:border-blue-200">
-                            <input type="text" id="message-input" autocomplete="off" placeholder="Type a message..." class="flex-1 bg-transparent border-none py-3 outline-none text-sm text-gray-800 font-medium">
-                            <button type="submit" id="send-btn" class="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center hover:bg-blue-700 transition">
-                                <i class="fas fa-paper-plane text-xs"></i>
-                            </button>
+                    <div id="messages-container" class="flex-1 overflow-y-auto p-6 space-y-4 hide-scrollbar"></div>
+                    <footer class="p-6 bg-white border-t border-gray-50">
+                        <form id="message-form" class="flex items-center gap-3 bg-gray-100 rounded-2xl px-5 py-2">
+                            <input type="text" id="message-input" autocomplete="off" placeholder="Type a message..." class="flex-1 bg-transparent border-none py-2 outline-none text-sm font-medium">
+                            <button type="submit" class="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"><i class="fas fa-paper-plane text-xs"></i></button>
                         </form>
                     </footer>
                 </div>
@@ -152,50 +174,13 @@
     </div>
 
     <!-- Modals -->
-    <div id="modal-overlay" class="fixed inset-0 bg-slate-900/40 z-[110] hidden flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl relative border border-gray-100">
-            <h3 class="text-2xl font-bold mb-2 text-gray-900">New Chat</h3>
-            <p class="text-sm text-gray-500 mb-8">Add a handle to your contact list.</p>
-            <input type="text" id="search-input" placeholder="Recipient handle" class="w-full py-4 g-input text-lg outline-none font-medium mb-8">
-            <div class="flex items-center gap-3">
-                <button id="modal-cancel" class="flex-1 py-3.5 text-gray-500 hover:bg-gray-50 rounded-xl font-bold text-sm">Cancel</button>
-                <button id="search-btn" class="flex-1 py-3.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold shadow-lg shadow-blue-100 text-sm">Add User</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="edit-modal-overlay" class="fixed inset-0 bg-slate-900/40 z-[220] hidden flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl relative border border-gray-100">
-            <h3 class="text-2xl font-bold mb-2 text-gray-900">Edit Message</h3>
-            <textarea id="edit-input" class="w-full py-4 g-input text-lg outline-none font-medium mb-8 min-h-[100px] resize-none"></textarea>
-            <div class="flex items-center gap-3">
-                <button id="edit-cancel" class="flex-1 py-3.5 text-gray-500 hover:bg-gray-50 rounded-xl font-bold text-sm">Cancel</button>
-                <button id="edit-save" class="flex-1 py-3.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold text-sm">Save Changes</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="change-handle-modal" class="fixed inset-0 bg-slate-900/40 z-[120] hidden flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl relative border border-gray-100">
-            <h3 class="text-2xl font-bold mb-2 text-gray-900 text-center">Update Identity</h3>
-            <input type="text" id="new-handle-input" placeholder="New handle" class="w-full py-4 g-input text-lg outline-none font-medium mb-8">
-            <div class="flex items-center gap-3">
-                <button id="change-handle-cancel" class="flex-1 py-3.5 text-gray-500 hover:bg-gray-50 rounded-xl font-bold text-sm">Cancel</button>
-                <button id="change-handle-final" class="flex-1 py-3.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold text-sm">Update</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="confirm-delete-modal" class="fixed inset-0 bg-slate-900/40 z-[210] hidden flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl relative border border-gray-100 text-center">
-            <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
-            </div>
-            <h3 class="text-xl font-bold mb-2 text-gray-900">Delete Account?</h3>
-            <p class="text-sm text-gray-500 mb-8">Wipes all chats and history permanently.</p>
-            <div class="flex items-center gap-3">
-                <button id="confirm-delete-cancel" class="flex-1 py-3.5 text-gray-500 hover:bg-gray-50 rounded-xl font-bold text-sm">Keep</button>
-                <button id="confirm-delete-final" class="flex-1 py-3.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold text-sm">Delete</button>
+    <div id="modal-overlay" class="fixed inset-0 bg-black/20 z-[110] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl">
+            <h3 class="text-xl font-bold mb-4">Start New Chat</h3>
+            <input type="text" id="search-input" placeholder="User handle" class="w-full py-4 g-input text-lg mb-6">
+            <div class="flex gap-3">
+                <button id="modal-cancel" class="flex-1 py-3 text-gray-500 font-bold">Cancel</button>
+                <button id="search-btn" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold">Add</button>
             </div>
         </div>
     </div>
@@ -209,7 +194,7 @@
         let connections = {}; 
         let activeChatId = null;
         let myHandle = localStorage.getItem('p2p_handle');
-        let editingMsgId = null;
+        let reactionTargetId = null;
 
         let messageHistory = JSON.parse(localStorage.getItem('p2p_history')) || {};
         let unreadCounts = JSON.parse(localStorage.getItem('p2p_unread')) || {};
@@ -224,7 +209,7 @@
             const toast = document.getElementById('status-toast');
             document.getElementById('toast-msg').innerText = msg;
             toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 4000);
+            setTimeout(() => toast.classList.remove('show'), 3000);
         };
 
         const updateStatusUI = (pct) => {
@@ -236,381 +221,261 @@
         window.onload = () => {
             if (myHandle) {
                 document.getElementById('restore-section').classList.remove('hidden');
-                document.getElementById('restore-hint').classList.remove('hidden');
                 document.getElementById('restore-handle-name').innerText = `@${myHandle}`;
-                document.getElementById('my-handle-input').focus();
             }
         };
 
         document.getElementById('set-identity-btn').onclick = () => {
             const input = document.getElementById('my-handle-input').value.trim().toLowerCase();
-            if (!input || input.length < 2) return showToast("Handle is too short");
+            if (input.length < 2) return showToast("Handle too short");
             myHandle = input;
             saveState();
             initPeer(myHandle);
         };
 
-        document.getElementById('restore-identity-btn').onclick = () => {
-            if (myHandle) initPeer(myHandle);
-        };
+        document.getElementById('restore-identity-btn').onclick = () => initPeer(myHandle);
 
         function initPeer(id) {
             updateStatusUI(30);
-            if (peer) {
-                Object.values(connections).forEach(c => c.close());
-                connections = {};
-                peer.destroy();
-                peer = null;
-            }
-
-            setTimeout(() => {
-                peer = new Peer('cc-p2p-' + id);
-                
-                peer.on('open', () => {
-                    updateStatusUI(100);
-                    document.getElementById('identity-overlay').classList.add('hidden');
-                    document.getElementById('display-my-handle').innerText = id;
-                    document.getElementById('user-avatar-btn').innerText = id[0];
-                    updateChatList();
-                    Object.keys(messageHistory).forEach(h => attemptConnection(h));
-                });
-
-                peer.on('connection', (conn) => setupConnection(conn));
-
-                peer.on('error', (err) => {
-                    updateStatusUI(0);
-                    if (err.type === 'unavailable-id') {
-                        showToast("Handle is active elsewhere.");
-                        document.getElementById('identity-overlay').classList.remove('hidden');
-                    }
-                });
-            }, 50);
+            if (peer) { peer.destroy(); connections = {}; }
+            
+            peer = new Peer('cc-p2p-' + id);
+            peer.on('open', () => {
+                updateStatusUI(100);
+                document.getElementById('identity-overlay').classList.add('hidden');
+                document.getElementById('display-my-handle').innerText = id;
+                document.getElementById('user-avatar-btn').innerText = id[0];
+                updateChatList();
+                Object.keys(messageHistory).forEach(h => attemptConnection(h));
+            });
+            peer.on('connection', setupConnection);
+            peer.on('error', (err) => {
+                if(err.type === 'unavailable-id') showToast("Handle is currently taken.");
+                else showToast("Connection error occurred.");
+                console.error(err);
+            });
         }
 
         function attemptConnection(target) {
-            if (connections[target]) return;
-            const conn = peer.connect('cc-p2p-' + target);
-            setupConnection(conn);
+            if (connections[target] || target === myHandle) return;
+            setupConnection(peer.connect('cc-p2p-' + target));
         }
 
         function setupConnection(conn) {
             const remoteHandle = conn.peer.replace('cc-p2p-', '');
-            
             conn.on('open', () => {
                 connections[remoteHandle] = conn;
-                const unsynced = (messageHistory[remoteHandle] || []).filter(m => m.sender === 'me' && !m.synced);
-                
-                conn.send({ 
-                    type: 'handshake', 
-                    from: myHandle,
-                    syncMessages: unsynced
-                });
-                
+                conn.send({ type: 'handshake', from: myHandle });
                 updateChatList();
-                if (activeChatId === remoteHandle) renderMessages(); 
+                if (activeChatId === remoteHandle) renderMessages();
             });
 
             conn.on('data', (data) => {
-                if (data.type === 'handshake') {
-                    if (!messageHistory[remoteHandle]) {
-                        messageHistory[remoteHandle] = [];
-                        unreadCounts[remoteHandle] = 0;
-                    }
-                    if (data.syncMessages && data.syncMessages.length > 0) {
-                        data.syncMessages.forEach(m => {
-                            if (!messageHistory[remoteHandle].find(ex => ex.id === m.id)) {
-                                handleIncomingMessage(remoteHandle, m.text, m.id);
-                            }
-                        });
-                        conn.send({ type: 'sync-ack', ids: data.syncMessages.map(m => m.id) });
-                    }
-                    saveState();
-                    updateChatList();
-                    if (activeChatId === remoteHandle) renderMessages();
-                }
-
-                if (data.type === 'sync-ack') {
-                    data.ids.forEach(id => {
-                        const msg = messageHistory[remoteHandle].find(m => m.id === id);
-                        if (msg) msg.synced = true;
-                    });
-                    if (activeChatId === remoteHandle) renderMessages();
-                    saveState();
-                }
-                
-                if (data.type === 'chat') {
-                    handleIncomingMessage(remoteHandle, data.text, data.id);
-                    conn.send({ type: 'receipt', id: data.id });
-                }
-
+                if (data.type === 'chat') handleIncoming(remoteHandle, data);
+                if (data.type === 'reaction') handleReaction(remoteHandle, data);
                 if (data.type === 'receipt') {
-                    const msg = messageHistory[remoteHandle].find(m => m.id === data.id);
-                    if (msg) {
-                        msg.synced = true;
-                        if (activeChatId === remoteHandle) renderMessages();
-                        saveState();
-                    }
-                }
-
-                if (data.type === 'edit') {
-                    const msg = messageHistory[remoteHandle].find(m => m.id === data.id);
-                    if (msg) {
-                        msg.text = data.text;
-                        msg.edited = true;
-                        if (activeChatId === remoteHandle) renderMessages();
-                        saveState();
-                    }
+                    const m = messageHistory[remoteHandle].find(x => x.id === data.id);
+                    if (m) { m.synced = true; renderMessages(); saveState(); }
                 }
             });
 
-            conn.on('close', () => {
-                delete connections[remoteHandle];
-                updateChatList();
-                if(activeChatId === remoteHandle) renderMessages();
-            });
+            conn.on('close', () => { delete connections[remoteHandle]; updateChatList(); });
         }
 
-        document.getElementById('user-avatar-btn').onclick = (e) => { 
-            e.stopPropagation(); 
-            document.getElementById('profile-dropdown').classList.toggle('show'); 
-        };
-        document.addEventListener('click', () => document.getElementById('profile-dropdown').classList.remove('show'));
-
-        document.getElementById('change-handle-btn').onclick = () => {
-            document.getElementById('change-handle-modal').classList.remove('hidden');
-            document.getElementById('new-handle-input').value = myHandle;
-        };
-
-        document.getElementById('change-handle-final').onclick = () => {
-            const newHandle = document.getElementById('new-handle-input').value.trim().toLowerCase();
-            if (!newHandle || newHandle.length < 2) return showToast("Invalid Handle");
-            myHandle = newHandle;
-            saveState();
-            document.getElementById('change-handle-modal').classList.add('hidden');
-            initPeer(myHandle);
-        };
-
-        document.getElementById('change-handle-cancel').onclick = () => document.getElementById('change-handle-modal').classList.add('hidden');
-        document.getElementById('delete-account-btn').onclick = () => document.getElementById('confirm-delete-modal').classList.remove('hidden');
-        document.getElementById('confirm-delete-cancel').onclick = () => document.getElementById('confirm-delete-modal').classList.add('hidden');
-        document.getElementById('confirm-delete-final').onclick = () => {
-            localStorage.clear();
-            location.reload();
-        };
-
-        document.getElementById('new-chat-trigger').onclick = () => {
-            document.getElementById('modal-overlay').classList.remove('hidden');
-            document.getElementById('search-input').focus();
-        };
-
-        document.getElementById('modal-cancel').onclick = () => document.getElementById('modal-overlay').classList.add('hidden');
-
-        document.getElementById('search-btn').onclick = () => {
-            const target = document.getElementById('search-input').value.trim().toLowerCase();
-            if (!target || target === myHandle) return showToast("Invalid target.");
-            document.getElementById('modal-overlay').classList.add('hidden');
-            document.getElementById('search-input').value = '';
-            if (!messageHistory[target]) {
-                messageHistory[target] = [];
-                unreadCounts[target] = 0;
-                saveState();
-            }
-            attemptConnection(target);
-            updateChatList();
-        };
-
-        function updateChatList() {
-            const container = document.getElementById('chat-list');
-            const handles = Object.keys(messageHistory);
-            container.innerHTML = handles.length ? '' : '<div class="p-10 text-center text-gray-400 text-xs">No active chats.</div>';
-            
-            handles.forEach(h => {
-                const isOnline = !!connections[h];
-                const isActive = activeChatId === h;
-                const unread = unreadCounts[h] > 0;
-                const el = document.createElement('div');
-                el.className = `chat-item px-6 py-4 cursor-pointer flex items-center gap-4 transition-all hover:bg-gray-50 group ${isActive ? 'active' : ''}`;
-                
-                el.innerHTML = `
-                    <div class="relative">
-                        <div class="w-11 h-11 rounded-xl ${isActive ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'} flex items-center justify-center text-sm font-black uppercase">${h[0]}</div>
-                        <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-300'}"></div>
-                    </div>
-                    <div class="flex-1 truncate">
-                        <div class="text-[13px] text-gray-900 capitalize-handle font-bold">${h}</div>
-                        <div class="text-[10px] opacity-60 font-bold uppercase tracking-tighter">${isOnline ? 'Connected' : 'Offline'}</div>
-                    </div>
-                    ${unread && !isActive ? '<div class="unread-indicator"></div>' : ''}
-                    <button class="delete-chat-btn p-2 text-gray-300 hover:text-red-500" onclick="deleteConversation('${h}', event)">
-                        <i class="fas fa-trash-alt text-[11px]"></i>
-                    </button>
-                `;
-                el.onclick = () => openChat(h);
-                container.appendChild(el);
-            });
-        }
-
-        function deleteConversation(handle, event) {
-            event.stopPropagation();
-            if (connections[handle]) connections[handle].close();
-            delete messageHistory[handle];
-            delete unreadCounts[handle];
-            if (activeChatId === handle) {
-                activeChatId = null;
-                document.getElementById('no-chat-selected').classList.remove('hidden');
-                document.getElementById('active-chat-content').classList.add('hidden');
-            }
-            saveState();
-            updateChatList();
-        }
-
-        function openChat(handle) {
-            activeChatId = handle;
-            unreadCounts[handle] = 0; 
-            saveState();
-            
-            document.getElementById('no-chat-selected').classList.add('hidden');
-            document.getElementById('active-chat-content').classList.remove('hidden');
-            document.getElementById('chat-window').classList.replace('hidden', 'flex');
-            if (window.innerWidth < 768) document.getElementById('sidebar').classList.add('hidden');
-            
-            document.getElementById('target-handle-header').innerText = handle;
-            document.getElementById('target-avatar').innerText = handle[0];
-            
-            renderMessages();
-            updateChatList();
-        }
-
-        function renderMessages() {
-            const container = document.getElementById('messages-container');
-            container.innerHTML = '';
-            const history = messageHistory[activeChatId] || [];
-            
-            // Find the VERY LAST message that was synced/read by the other person
-            let lastSyncedId = null;
-            for (let i = history.length - 1; i >= 0; i--) {
-                if (history[i].sender === 'me' && history[i].synced) {
-                    lastSyncedId = history[i].id;
-                    break;
-                }
-            }
-
-            history.forEach((m, idx) => {
-                const isMe = m.sender === 'me';
-                const isGrouped = idx > 0 && history[idx-1].sender === m.sender;
-                const div = document.createElement('div');
-                div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} ${isGrouped ? 'mt-1' : 'mt-4'}`;
-                
-                const editedLabel = m.edited ? '<span class="text-[9px] opacity-50 ml-1 italic">(edited)</span>' : '';
-                const isLastRead = m.id === lastSyncedId;
-
-                div.innerHTML = `
-                    <div class="message-bubble px-4 py-2 rounded-2xl text-[14px] ${isMe ? 'bg-blue-600 text-white rounded-tr-none shadow-blue-100 editable' : 'bg-gray-100 text-gray-800 rounded-tl-none shadow-sm'} shadow-md" data-id="${m.id}">
-                        <span>${m.text}</span>
-                        <div class="flex items-center justify-end">
-                            ${editedLabel}
-                        </div>
-                    </div>
-                    ${isLastRead ? `
-                        <div class="read-receipt-avatar bg-gray-900 text-white uppercase" title="Read by ${activeChatId}">
-                            ${activeChatId[0]}
-                        </div>
-                    ` : ''}
-                `;
-
-                if (isMe) {
-                    div.querySelector('.message-bubble').onclick = () => startEditMessage(m.id, m.text);
-                }
-
-                container.appendChild(div);
-            });
-            container.scrollTop = container.scrollHeight;
-        }
-
-        function startEditMessage(id, currentText) {
-            editingMsgId = id;
-            document.getElementById('edit-modal-overlay').classList.remove('hidden');
-            document.getElementById('edit-input').value = currentText;
-            document.getElementById('edit-input').focus();
-        }
-
-        document.getElementById('edit-cancel').onclick = () => document.getElementById('edit-modal-overlay').classList.add('hidden');
-        
-        document.getElementById('edit-save').onclick = () => {
-            const newText = document.getElementById('edit-input').value.trim();
-            if (!newText || !activeChatId || !editingMsgId) return;
-
-            const msg = messageHistory[activeChatId].find(m => m.id === editingMsgId);
-            if (msg) {
-                msg.text = newText;
-                msg.edited = true;
-                const conn = connections[activeChatId];
-                if (conn && conn.open) conn.send({ type: 'edit', id: editingMsgId, text: newText });
-                saveState();
-                renderMessages();
-            }
-            document.getElementById('edit-modal-overlay').classList.add('hidden');
-            editingMsgId = null;
-        };
-
-        function handleIncomingMessage(handle, text, id) {
+        function handleIncoming(handle, data) {
             if (!messageHistory[handle]) messageHistory[handle] = [];
-            if (messageHistory[handle].find(m => m.id === id)) return;
-
-            messageHistory[handle].push({ 
-                id: id || Date.now() + Math.random(),
-                sender: 'them', 
-                text,
-                timestamp: Date.now(),
-                synced: true,
-                edited: false
-            });
-
+            if (messageHistory[handle].find(m => m.id === data.id)) return;
+            messageHistory[handle].push({ ...data, sender: 'them', reactions: [] });
+            
             if (activeChatId === handle) {
-                renderMessages();
+                renderMessages(); 
             } else {
-                unreadCounts[handle] = (unreadCounts[handle] || 0) + 1;
+                unreadCounts[handle] = (unreadCounts[handle]||0)+1;
             }
-            saveState();
+            
+            connections[handle]?.send({ type: 'receipt', id: data.id });
+            saveState(); 
             updateChatList();
         }
 
+        function handleReaction(handle, data) {
+            const history = messageHistory[handle] || [];
+            const msg = history.find(m => m.id === data.messageId);
+            if (msg) {
+                if (!msg.reactions) msg.reactions = [];
+                const existingIdx = msg.reactions.findIndex(r => r.emoji === data.emoji && r.user === handle);
+                if (existingIdx > -1) msg.reactions.splice(existingIdx, 1);
+                else msg.reactions.push({ emoji: data.emoji, user: handle });
+                if (activeChatId === handle) renderMessages();
+                saveState();
+            }
+        }
+
+        // Messaging Logic
         document.getElementById('message-form').onsubmit = (e) => {
             e.preventDefault();
             const input = document.getElementById('message-input');
             const text = input.value.trim();
             if (!text || !activeChatId) return;
 
-            const msgId = Date.now() + Math.random();
-            const conn = connections[activeChatId];
-            const isOnline = (conn && conn.open);
-
-            const newMsg = {
-                id: msgId,
-                sender: 'me',
-                text,
-                timestamp: Date.now(),
-                synced: false,
-                edited: false
+            const msg = { 
+                id: Date.now() + Math.random(), 
+                text, 
+                timestamp: Date.now(), 
+                sender: 'me', 
+                reactions: [], 
+                synced: false 
             };
-
-            messageHistory[activeChatId].push(newMsg);
             
-            if (isOnline) {
-                conn.send({ type: 'chat', text, id: msgId });
-            }
-
-            saveState();
-            renderMessages();
+            messageHistory[activeChatId].push(msg);
+            connections[activeChatId]?.send({ type: 'chat', ...msg });
+            
             input.value = '';
-            updateChatList();
+            renderMessages();
+            saveState();
         };
 
-        document.getElementById('back-btn').onclick = () => {
-            document.getElementById('sidebar').classList.remove('hidden');
-            document.getElementById('chat-window').classList.add('hidden');
-            activeChatId = null;
+        // Optimized Renderer
+        function renderMessages() {
+            const container = document.getElementById('messages-container');
+            const history = messageHistory[activeChatId] || [];
+            
+            // Generate full HTML string for faster injection than recursive appendChild
+            const lastSyncedId = [...history].reverse().find(m => m.sender === 'me' && m.synced)?.id;
+            
+            const html = history.map(m => {
+                const isMe = m.sender === 'me';
+                const reactionsHtml = (m.reactions || []).map(r => `<span class="reaction-badge">${r.emoji}</span>`).join('');
+                
+                return `
+                    <div class="flex flex-col ${isMe ? 'items-end is-me' : 'items-start is-them'}">
+                        <div class="message-bubble px-4 py-2.5 rounded-2xl text-[14px] shadow-sm ${isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-gray-100 text-gray-800 rounded-tl-none'}" 
+                             onclick="showReactionPicker(event, '${m.id}')">
+                            <span class="block">${m.text}</span>
+                            <div class="reaction-container">${reactionsHtml}</div>
+                        </div>
+                        ${m.id === lastSyncedId ? `<div class="read-receipt-avatar bg-gray-900 text-white">${activeChatId[0]}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = html;
+            
+            // Instant scroll to bottom
+            container.scrollTo({ top: container.scrollHeight, behavior: 'instant' });
+        }
+
+        function showReactionPicker(e, msgId) {
+            e.stopPropagation();
+            reactionTargetId = msgId;
+            const picker = document.getElementById('reaction-picker');
+            
+            // Improved Positioning Logic
+            const rect = e.currentTarget.getBoundingClientRect();
+            const pickerWidth = 240;
+            const pickerHeight = 50;
+
+            let x = rect.left + (rect.width / 2) - (pickerWidth / 2);
+            let y = rect.top - pickerHeight - 10;
+
+            // Constrain to viewport
+            x = Math.max(10, Math.min(x, window.innerWidth - pickerWidth - 10));
+            if (y < 10) y = rect.bottom + 10; // Show below if no space above
+
+            picker.style.left = `${x}px`;
+            picker.style.top = `${y}px`;
+            picker.classList.add('show');
+        }
+
+        function reactToMessage(emoji) {
+            if (!reactionTargetId || !activeChatId) return;
+            
+            const msg = messageHistory[activeChatId].find(m => m.id == reactionTargetId);
+            if (msg) {
+                if (!msg.reactions) msg.reactions = [];
+                const existingIdx = msg.reactions.findIndex(r => r.emoji === emoji && r.user === myHandle);
+                
+                if (existingIdx > -1) msg.reactions.splice(existingIdx, 1);
+                else msg.reactions.push({ emoji, user: myHandle });
+
+                connections[activeChatId]?.send({ type: 'reaction', messageId: reactionTargetId, emoji });
+                renderMessages();
+                saveState();
+            }
+            closePickers();
+        }
+
+        function closePickers() {
+            document.getElementById('reaction-picker').classList.remove('show');
+            document.getElementById('profile-dropdown').classList.remove('show');
+        }
+
+        document.addEventListener('click', closePickers);
+
+        function openChat(h) {
+            activeChatId = h;
+            unreadCounts[h] = 0;
+            document.getElementById('no-chat-selected').classList.add('hidden');
+            document.getElementById('active-chat-content').classList.remove('hidden');
+            document.getElementById('chat-window').classList.replace('hidden', 'flex');
+            
+            if (window.innerWidth < 768) {
+                document.getElementById('sidebar').classList.add('hidden');
+            }
+            
+            document.getElementById('target-handle-header').innerText = h;
+            document.getElementById('target-avatar').innerText = h[0];
+            
+            renderMessages();
+            updateChatList();
+            saveState();
+        }
+
+        function updateChatList() {
+            const container = document.getElementById('chat-list');
+            const items = Object.keys(messageHistory).map(h => {
+                const isOnline = !!connections[h];
+                const unread = unreadCounts[h] > 0;
+                return `
+                    <div class="chat-item px-6 py-4 cursor-pointer flex items-center gap-4 hover:bg-gray-50 ${activeChatId === h ? 'active' : ''}" onclick="openChat('${h}')">
+                        <div class="relative">
+                            <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center font-bold uppercase">${h[0]}</div>
+                            <div class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-300'}"></div>
+                        </div>
+                        <div class="flex-1 truncate">
+                            <div class="text-[13px] font-bold">${h}</div>
+                            <div class="text-[10px] text-gray-400 uppercase font-black">${isOnline ? 'Active' : 'Offline'}</div>
+                        </div>
+                        ${unread ? '<div class="w-2.5 h-2.5 bg-blue-600 rounded-full shadow-sm"></div>' : ''}
+                    </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = items;
+        }
+
+        document.getElementById('new-chat-trigger').onclick = () => document.getElementById('modal-overlay').classList.remove('hidden');
+        document.getElementById('modal-cancel').onclick = () => document.getElementById('modal-overlay').classList.add('hidden');
+        document.getElementById('search-btn').onclick = () => {
+            const target = document.getElementById('search-input').value.trim().toLowerCase();
+            if (target && target !== myHandle) {
+                if (!messageHistory[target]) messageHistory[target] = [];
+                attemptConnection(target);
+                updateChatList();
+                document.getElementById('modal-overlay').classList.add('hidden');
+                document.getElementById('search-input').value = '';
+            }
         };
+
+        document.getElementById('user-avatar-btn').onclick = (e) => { e.stopPropagation(); document.getElementById('profile-dropdown').classList.toggle('show'); };
+        document.getElementById('back-btn').onclick = () => { 
+            document.getElementById('sidebar').classList.remove('hidden'); 
+            document.getElementById('chat-window').classList.add('hidden'); 
+            activeChatId = null; 
+        };
+        document.getElementById('delete-account-btn').onclick = () => { localStorage.clear(); location.reload(); };
+        document.getElementById('change-handle-btn').onclick = () => { localStorage.removeItem('p2p_handle'); location.reload(); };
+
     </script>
 </body>
 </html>
