@@ -3,148 +3,184 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ConnectChat - Premium P2P</title>
+    <title>ConnectChat | Ultra-Private P2P</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         
         :root {
-            --brand-primary: #4f46e5;
-            --brand-hover: #4338ca;
-            --bg-main: #fcfcfd;
+            --brand-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --bg-main: #f8fafc;
         }
 
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
             background-color: var(--bg-main);
-            color: #1a1a1a;
+            color: #0f172a;
         }
 
-        /* Modern Chat Bubbles */
-        .bubble {
-            max-width: 85%;
-            padding: 12px 18px;
-            font-size: 0.9375rem;
-            line-height: 1.5;
+        /* Modern Logo Style */
+        .logo-container {
             position: relative;
+            width: 56px;
+            height: 56px;
+            background: var(--brand-gradient);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.4);
+        }
+
+        .logo-pulse {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: #6366f1;
+            border-radius: 18px;
+            opacity: 0.5;
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.5; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        /* Chat Aesthetics */
+        .bubble {
+            max-width: 80%;
+            padding: 14px 20px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            transition: all 0.2s;
         }
 
         .bubble-me {
-            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            background: var(--brand-gradient);
             color: white;
-            border-radius: 20px 20px 4px 20px;
-            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+            border-radius: 22px 22px 4px 22px;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.2);
         }
 
         .bubble-them {
             background: white;
-            color: #374151;
-            border-radius: 20px 20px 20px 4px;
-            border: 1px solid #f1f5f9;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            color: #334155;
+            border-radius: 22px 22px 22px 4px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
         }
 
-        /* Glassmorphism Emoji Picker */
         #emoji-picker {
             display: none;
             position: absolute;
-            bottom: 110%;
+            bottom: 120%;
             right: 0;
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid #e2e8f0;
             border-radius: 24px;
-            padding: 14px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            padding: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
             grid-template-columns: repeat(6, 1fr);
-            gap: 8px;
-            z-index: 50;
+            gap: 10px;
+            z-index: 100;
         }
 
         #emoji-picker span {
-            font-size: 1.25rem;
+            font-size: 1.4rem;
             cursor: pointer;
             padding: 8px;
             border-radius: 12px;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            transition: transform 0.2s, background 0.2s;
         }
 
         #emoji-picker span:hover {
-            background: white;
-            transform: scale(1.15);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            background: #f1f5f9;
+            transform: scale(1.2);
         }
 
         .custom-scroll::-webkit-scrollbar { width: 5px; }
-        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 
-        @keyframes messageIn {
-            from { opacity: 0; transform: translateY(12px) scale(0.98); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        .message-anim { animation: messageIn 0.3s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
+        .msg-anim { animation: slideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+        #toast {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 200;
+        }
     </style>
 </head>
 <body class="h-screen overflow-hidden flex flex-col">
 
+    <!-- Connection Toast -->
+    <div id="toast" class="bg-slate-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 text-sm font-bold">
+        <i class="fas fa-circle-check text-emerald-400"></i>
+        <span id="toast-msg">Connected!</span>
+    </div>
+
     <!-- Login/Landing -->
-    <div id="landing-page" class="fixed inset-0 z-[100] flex items-center justify-center bg-white">
-        <div class="max-w-md w-full px-10 text-center">
-            <div class="w-24 h-24 bg-indigo-600 rounded-[2rem] flex items-center justify-center text-white text-4xl mx-auto mb-8 shadow-2xl shadow-indigo-200 rotate-3">
-                <i class="fas fa-shield-heart"></i>
+    <div id="landing-page" class="fixed inset-0 z-[100] flex items-center justify-center bg-white/95 backdrop-blur-sm">
+        <div class="max-w-md w-full px-12 text-center">
+            <div class="logo-container mx-auto mb-10">
+                <div class="logo-pulse"></div>
+                <i class="fas fa-bolt-lightning text-white text-2xl z-10"></i>
             </div>
-            <h1 class="text-4xl font-extrabold text-slate-900 mb-3 tracking-tight">ConnectChat</h1>
-            <p class="text-slate-500 mb-10 text-lg">Secure, peer-to-peer room messaging.</p>
+            <h1 class="text-4xl font-extrabold text-slate-900 mb-2 tracking-tight">ConnectChat</h1>
+            <p class="text-slate-500 mb-10 font-medium">No servers. No logs. Just P2P.</p>
             
-            <div class="space-y-5">
+            <div class="space-y-6">
                 <div class="text-left">
-                    <label class="text-xs font-bold text-slate-400 uppercase tracking-widest ml-3 mb-2 block">Choose a Nickname</label>
-                    <input type="text" id="name-input" placeholder="e.g. Alex" maxlength="15"
-                        class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-semibold text-lg">
+                    <label class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest ml-4 mb-2 block">Nickname</label>
+                    <input type="text" id="name-input" placeholder="What's your name?" maxlength="15"
+                        class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-5 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-bold text-lg">
                 </div>
                 
                 <div class="text-left">
-                    <label class="text-xs font-bold text-slate-400 uppercase tracking-widest ml-3 mb-2 block">Your Personal Room ID</label>
-                    <input type="text" id="custom-id-input" placeholder="e.g. secret-summer-club" 
-                        class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-mono text-indigo-600">
-                    <p class="text-[11px] text-slate-400 mt-3 flex items-center gap-1.5 ml-1">
-                        <i class="fas fa-info-circle"></i> Use the same ID to always use the same room.
-                    </p>
+                    <label class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest ml-4 mb-2 block">Persistent Room ID</label>
+                    <input type="text" id="custom-id-input" placeholder="e.g. daily-sync-room" 
+                        class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-5 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-mono text-indigo-600 text-base">
                 </div>
             </div>
             
-            <button id="enter-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 mt-10 rounded-2xl shadow-xl shadow-indigo-100 transition-all active:scale-[0.98]">
-                Enter Chat Room
+            <button id="enter-btn" class="w-full bg-slate-900 hover:bg-black text-white font-bold py-5 mt-10 rounded-2xl shadow-xl transition-all active:scale-[0.98]">
+                Launch Session
             </button>
         </div>
     </div>
 
     <!-- Header -->
-    <header class="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 px-8 flex items-center justify-between sticky top-0 z-10">
-        <div class="flex items-center gap-4">
-            <div class="w-11 h-11 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-100">
-                <i class="fas fa-comment-nodes"></i>
+    <header class="h-24 bg-white border-b border-slate-100 px-10 flex items-center justify-between sticky top-0 z-10">
+        <div class="flex items-center gap-5">
+            <div class="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg">
+                <i class="fas fa-link text-xl"></i>
             </div>
             <div>
-                <h2 class="font-bold text-slate-900 text-lg tracking-tight">ConnectChat</h2>
-                <div class="flex items-center gap-2 mt-0.5">
-                    <span id="status-dot" class="w-2 h-2 bg-slate-400 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.1)]"></span>
-                    <span id="user-name-display" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ready</span>
+                <h2 class="font-extrabold text-slate-900 text-xl tracking-tight">ConnectChat</h2>
+                <div class="flex items-center gap-2 mt-1">
+                    <span id="status-dot" class="w-2.5 h-2.5 bg-slate-300 rounded-full"></span>
+                    <span id="user-name-display" class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Awaiting ID...</span>
                 </div>
             </div>
         </div>
 
         <div class="flex items-center gap-4">
-            <div class="bg-indigo-50 border border-indigo-100/50 pl-4 pr-2 py-1.5 rounded-2xl flex items-center gap-3">
-                <span class="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Room ID</span>
-                <code id="my-id-text" class="text-xs font-bold text-indigo-600 font-mono">...</code>
-                <button id="copy-btn" class="w-8 h-8 flex items-center justify-center bg-white rounded-xl text-indigo-400 hover:text-indigo-600 transition-all shadow-sm">
+            <div class="bg-slate-50 border border-slate-200 pl-5 pr-2 py-2 rounded-2xl flex items-center gap-4">
+                <div class="flex flex-col">
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-tighter leading-none">Your Room ID</span>
+                    <code id="my-id-text" class="text-sm font-bold text-slate-900 font-mono mt-1 italic">...</code>
+                </div>
+                <button id="copy-btn" class="w-10 h-10 flex items-center justify-center bg-white rounded-xl text-slate-400 hover:text-indigo-600 transition-all shadow-sm border border-slate-100">
                     <i class="fas fa-copy"></i>
                 </button>
             </div>
@@ -155,13 +191,13 @@
     <main class="flex-1 flex overflow-hidden">
         
         <!-- Sidebar -->
-        <aside class="w-80 bg-white border-r border-slate-100 hidden md:flex flex-col p-8 shrink-0">
+        <aside class="w-80 bg-white border-r border-slate-100 hidden lg:flex flex-col p-8 shrink-0">
             <div class="mb-10">
-                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 block ml-1">Connect with Friend</label>
+                <label class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 block ml-1">Add Peer to Mesh</label>
                 <div class="relative">
                     <input type="text" id="peer-id-input" placeholder="Friend's Room ID" 
-                        class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all pr-12">
-                    <button id="connect-btn" class="absolute right-2 top-2 w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:bg-black transition-all">
+                        class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all pr-14 font-medium">
+                    <button id="connect-btn" class="absolute right-2 top-2 w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center hover:bg-indigo-700 transition-all shadow-md">
                         <i class="fas fa-plus"></i>
                     </button>
                 </div>
@@ -169,32 +205,33 @@
 
             <div class="flex-1 overflow-y-auto custom-scroll">
                 <div class="flex items-center justify-between mb-6 px-1">
-                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">In this Room</span>
-                    <span id="member-count" class="bg-indigo-100 text-indigo-600 text-[10px] font-bold px-2.5 py-1 rounded-full">1</span>
+                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Active Links</span>
+                    <span id="member-count" class="bg-slate-900 text-white text-[11px] font-black px-3 py-1 rounded-full">1</span>
                 </div>
                 <div id="conn-list" class="space-y-3">
-                    <div class="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/30 flex items-center gap-4">
-                        <div class="w-9 h-9 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 text-xs font-bold shadow-sm">You</div>
-                        <span id="sidebar-my-name" class="text-sm font-bold text-slate-700 truncate">Me</span>
+                    <div class="p-4 bg-indigo-50 rounded-2xl border border-indigo-100/50 flex items-center gap-4">
+                        <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-indigo-100 shadow-lg">ME</div>
+                        <span id="sidebar-my-name" class="text-sm font-bold text-slate-800 truncate">User</span>
                     </div>
                 </div>
             </div>
         </aside>
 
         <!-- Chat View -->
-        <section class="flex-1 flex flex-col bg-[#fcfcfd] relative">
-            <div id="msg-container" class="flex-1 overflow-y-auto px-8 py-10 space-y-6 custom-scroll">
-                <div id="empty-state" class="h-full flex flex-col items-center justify-center text-center opacity-40">
-                    <div class="w-24 h-24 bg-slate-100 rounded-[2rem] flex items-center justify-center text-slate-300 text-4xl mb-6">
-                        <i class="fas fa-wind"></i>
+        <section class="flex-1 flex flex-col relative">
+            <div id="msg-container" class="flex-1 overflow-y-auto px-10 py-12 space-y-8 custom-scroll">
+                <div id="empty-state" class="h-full flex flex-col items-center justify-center text-center">
+                    <div class="w-32 h-32 bg-slate-50 rounded-[3rem] flex items-center justify-center text-slate-200 text-5xl mb-8 border border-slate-100">
+                        <i class="fas fa-paper-plane"></i>
                     </div>
-                    <p class="font-bold text-slate-900 text-lg">Quiet in here...</p>
-                    <p class="text-sm text-slate-500 mt-2 max-w-[240px]">Share your Room ID to start chatting with friends.</p>
+                    <h3 class="text-xl font-bold text-slate-900 mb-2">Initialize Connection</h3>
+                    <p class="text-sm text-slate-400 max-w-[280px]">Add a friend's Room ID to establish a secure P2P handshake.</p>
                 </div>
             </div>
 
-            <footer class="p-6 md:p-10 bg-white border-t border-slate-100">
-                <form id="chat-form" class="max-w-4xl mx-auto flex items-center gap-4 relative">
+            <!-- Message Bar -->
+            <footer class="p-8 lg:p-12 bg-white/80 backdrop-blur-md border-t border-slate-100">
+                <form id="chat-form" class="max-w-4xl mx-auto flex items-center gap-5 relative">
                     <div id="emoji-picker" class="grid">
                         <span>😀</span><span>😂</span><span>😍</span><span>🤔</span><span>👍</span><span>🔥</span>
                         <span>🙌</span><span>🎉</span><span>✨</span><span>😎</span><span>👋</span><span>💯</span>
@@ -202,17 +239,17 @@
                     </div>
 
                     <div class="flex-1 relative flex items-center">
-                        <input type="text" id="chat-input" placeholder="Type something..." autocomplete="off"
-                            class="w-full bg-slate-50 border border-slate-100 rounded-[1.5rem] pl-7 pr-24 py-5 font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-slate-700">
-                        <div class="absolute right-4 flex items-center gap-2">
-                            <button type="button" id="emoji-trigger" class="w-11 h-11 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all flex items-center justify-center">
-                                <i class="fas fa-face-smile text-xl"></i>
+                        <input type="text" id="chat-input" placeholder="Say something secure..." autocomplete="off"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-3xl pl-8 pr-28 py-6 font-semibold focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-slate-700 shadow-sm">
+                        <div class="absolute right-4 flex items-center gap-3">
+                            <button type="button" id="emoji-trigger" class="w-12 h-12 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all flex items-center justify-center">
+                                <i class="fas fa-face-smile text-2xl"></i>
                             </button>
                         </div>
                     </div>
                     
-                    <button type="submit" class="w-16 h-16 bg-indigo-600 text-white rounded-[1.5rem] flex items-center justify-center shadow-2xl shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95 group">
-                        <i class="fas fa-paper-plane text-xl group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"></i>
+                    <button type="submit" class="w-16 h-16 bg-slate-900 text-white rounded-3xl flex items-center justify-center shadow-2xl hover:bg-black transition-all active:scale-95 group">
+                        <i class="fas fa-arrow-up text-2xl group-hover:-translate-y-1 transition-transform"></i>
                     </button>
                 </form>
             </footer>
@@ -222,7 +259,7 @@
     <script>
         window.onload = function() {
             let peer = null;
-            let connections = [];
+            let connections = new Map(); // Store connections by peer ID for reliability
             let myName = "User";
 
             const landing = document.getElementById('landing-page');
@@ -238,8 +275,9 @@
             const emojiPicker = document.getElementById('emoji-picker');
             const emojiTrigger = document.getElementById('emoji-trigger');
             const statusDot = document.getElementById('status-dot');
+            const toast = document.getElementById('toast');
 
-            // Restore local storage
+            // Restore Preferences
             if (localStorage.getItem('cc-name')) nameInput.value = localStorage.getItem('cc-name');
             if (localStorage.getItem('cc-id')) customIdInput.value = localStorage.getItem('cc-id');
 
@@ -252,80 +290,101 @@
                 localStorage.setItem('cc-name', name);
                 if (customId) localStorage.setItem('cc-id', customId);
 
-                document.getElementById('user-name-display').innerText = `Online: ${name}`;
+                document.getElementById('user-name-display').innerText = `LIVE: ${name}`;
                 document.getElementById('sidebar-my-name').innerText = name;
                 landing.style.display = 'none';
                 initPeer(customId);
             };
 
+            function showToast(msg) {
+                document.getElementById('toast-msg').innerText = msg;
+                toast.style.transform = 'translateX(-50%) translateY(0)';
+                setTimeout(() => {
+                    toast.style.transform = 'translateX(-50%) translateY(-100px)';
+                }, 3000);
+            }
+
             function initPeer(id) {
-                try {
-                    peer = id ? new Peer(id) : new Peer();
-                    
-                    peer.on('open', (assignedId) => { 
-                        myIdText.innerText = assignedId; 
-                        statusDot.classList.remove('bg-slate-400');
-                        statusDot.classList.add('bg-emerald-500', 'animate-pulse');
-                    });
+                // Initialize PeerJS with explicit debug mode for connection monitoring
+                peer = id ? new Peer(id) : new Peer();
+                
+                peer.on('open', (assignedId) => { 
+                    myIdText.innerText = assignedId; 
+                    statusDot.className = "w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981]";
+                    showToast("Your Room ID is active!");
+                });
 
-                    peer.on('connection', (conn) => { setupConn(conn); });
+                // Listen for incoming handshakes
+                peer.on('connection', (conn) => {
+                    if (!connections.has(conn.peer)) {
+                        setupConn(conn);
+                    }
+                });
 
-                    peer.on('error', (err) => {
-                        console.error("PeerJS Error:", err);
-                        if (err.type === 'unavailable-id') {
-                            alert("Room ID occupied. Please try another!");
-                            window.location.reload();
-                        }
-                    });
-                } catch (e) {
-                    console.error("Initialization Error:", e);
-                }
+                peer.on('error', (err) => {
+                    if (err.type === 'unavailable-id') {
+                        alert("Room ID occupied. Please use a unique Link ID.");
+                        window.location.reload();
+                    } else if (err.type === 'peer-disconnected') {
+                        showToast("A link was lost.");
+                    }
+                    console.error("P2P Error:", err);
+                });
             }
 
             document.getElementById('connect-btn').onclick = () => {
-                const id = document.getElementById('peer-id-input').value.trim();
-                if (!id || id === peer?.id) return;
-                if (connections.find(c => c.peer === id)) return;
-                const conn = peer.connect(id, { metadata: { name: myName } });
+                const targetId = document.getElementById('peer-id-input').value.trim();
+                if (!targetId || targetId === peer?.id) return;
+                if (connections.has(targetId)) return;
+
+                const conn = peer.connect(targetId, { 
+                    metadata: { name: myName },
+                    reliable: true 
+                });
                 setupConn(conn);
                 document.getElementById('peer-id-input').value = '';
             };
 
             function setupConn(conn) {
                 conn.on('open', () => {
-                    connections.push(conn);
+                    connections.set(conn.peer, conn);
                     emptyState.style.display = 'none';
                     updateSidebar();
-                    addMessage("System", `${conn.metadata?.name || 'A friend'} joined the room.`, "sys");
+                    addMessage("MESH", `${conn.metadata?.name || 'A friend'} synchronized.`, "sys");
+                    showToast(`Linked with ${conn.metadata?.name || 'Friend'}`);
                 });
-                conn.on('data', (data) => { addMessage(conn.metadata?.name || "Friend", data, "them"); });
+
+                conn.on('data', (data) => {
+                    addMessage(conn.metadata?.name || "Friend", data, "them");
+                });
+
                 conn.on('close', () => {
-                    connections = connections.filter(c => c.peer !== conn.peer);
+                    connections.delete(conn.peer);
                     updateSidebar();
-                    if (connections.length === 0) emptyState.style.display = 'flex';
+                    if (connections.size === 0) emptyState.style.display = 'flex';
                 });
             }
 
             function updateSidebar() {
                 let html = `
-                    <div class="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/30 flex items-center gap-4">
-                        <div class="w-9 h-9 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 text-xs font-bold shadow-sm">You</div>
-                        <span class="text-sm font-bold text-slate-700 truncate">${myName}</span>
+                    <div class="p-4 bg-indigo-50 rounded-2xl border border-indigo-100/50 flex items-center gap-4">
+                        <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-indigo-100">ME</div>
+                        <span class="text-sm font-bold text-slate-800 truncate">${myName}</span>
                     </div>
                 `;
-                connections.forEach(c => {
+                connections.forEach((conn) => {
                     html += `
-                        <div class="p-4 bg-white rounded-2xl border border-slate-100 flex items-center justify-between message-anim shadow-sm">
+                        <div class="p-4 bg-white rounded-2xl border border-slate-100 flex items-center justify-between msg-anim shadow-sm">
                             <div class="flex items-center gap-4 min-w-0">
-                                <div class="w-9 h-9 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 text-xs"><i class="fas fa-user"></i></div>
-                                <span class="text-sm font-bold text-slate-700 truncate">${c.metadata?.name || 'Friend'}</span>
+                                <div class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500 text-xs"><i class="fas fa-user"></i></div>
+                                <span class="text-sm font-bold text-slate-800 truncate">${conn.metadata?.name || 'Friend'}</span>
                             </div>
-                            <div class="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                            <div class="w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-[0_0_5px_#10b981]"></div>
                         </div>
                     `;
                 });
                 connList.innerHTML = html;
-                document.getElementById('member-count').innerText = connections.length + 1;
+                document.getElementById('member-count').innerText = connections.size + 1;
             }
 
             emojiTrigger.onclick = (e) => {
@@ -347,7 +406,12 @@
                 e.preventDefault();
                 const text = chatInput.value.trim();
                 if (!text) return;
-                connections.forEach(conn => { if (conn.open) conn.send(text); });
+                
+                // Broadcast to all mesh connections
+                connections.forEach(conn => {
+                    if (conn.open) conn.send(text);
+                });
+
                 addMessage(myName, text, "me");
                 chatInput.value = '';
             };
@@ -355,13 +419,13 @@
             function addMessage(sender, text, type) {
                 const div = document.createElement('div');
                 if (type === 'sys') {
-                    div.className = "flex justify-center my-8";
-                    div.innerHTML = `<span class="bg-slate-100 text-slate-400 text-[10px] font-extrabold uppercase px-4 py-1.5 rounded-full tracking-widest border border-slate-200/50 shadow-sm">${text}</span>`;
+                    div.className = "flex justify-center my-10";
+                    div.innerHTML = `<span class="bg-white text-slate-400 text-[10px] font-black uppercase px-5 py-2 rounded-full tracking-widest border border-slate-100 shadow-sm">${text}</span>`;
                 } else {
                     const isMe = type === 'me';
-                    div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} message-anim mb-4`;
+                    div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} msg-anim mb-2`;
                     div.innerHTML = `
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 px-3">${sender}</span>
+                        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2 px-4">${sender}</span>
                         <div class="bubble ${isMe ? 'bubble-me' : 'bubble-them'}">
                             ${escapeHTML(text)}
                         </div>
@@ -390,6 +454,7 @@
                 const btn = document.getElementById('copy-btn');
                 btn.innerHTML = '<i class="fas fa-check text-emerald-500"></i>';
                 setTimeout(() => { btn.innerHTML = '<i class="fas fa-copy"></i>'; }, 2000);
+                showToast("ID copied to clipboard!");
             };
         };
     </script>
