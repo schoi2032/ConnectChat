@@ -264,7 +264,7 @@
             let html = `
                 <div class="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-center gap-4">
                     <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-[10px] font-black">ME</div>
-                    <span class="text-sm font-bold text-slate-800">${myName} (You)</span>
+                    <span class="text-sm font-bold text-slate-800">${myName || 'Me'} (You)</span>
                 </div>
             `;
             connections.forEach((conn) => {
@@ -290,24 +290,31 @@
         }
 
         function setupConnection(conn) {
+            if (!conn) return;
+            
             // Prevent duplicates
-            if (connections.has(conn.peer)) return;
+            if (connections.has(conn.peer)) {
+                console.log("Connection already exists for:", conn.peer);
+                return;
+            }
 
             conn.on('open', () => {
-                // Handshake 1: Send our nickname immediately
+                console.log("Connection opened with:", conn.peer);
+                // Handshake: Send our nickname immediately
                 conn.send({ type: 'handshake', name: myName });
                 connections.set(conn.peer, conn);
                 updatePeerRegistry();
-                notify("Encrypted Link Active");
+                notify("Connected to Peer");
             });
 
             conn.on('data', (data) => {
-                // Handshake 2: Receive their nickname
-                if (data.type === 'handshake') {
+                console.log("Received data:", data);
+                if (typeof data === 'object' && data.type === 'handshake') {
                     conn.peerName = data.name;
                     updatePeerRegistry();
                     return;
                 }
+                // Handle message text
                 addMessage(conn.peerName || "Peer", data, "them");
             });
 
@@ -317,7 +324,8 @@
                 notify("Peer Disconnected", 'error');
             });
 
-            conn.on('error', () => {
+            conn.on('error', (err) => {
+                console.error("Conn Error:", err);
                 connections.delete(conn.peer);
                 updatePeerRegistry();
             });
@@ -331,32 +339,47 @@
             document.getElementById('header-name').innerText = name;
             els.landing.classList.add('hidden');
 
-            peer = new Peer();
+            // Initialize Peer with reliable options
+            peer = new Peer(undefined, {
+                debug: 2
+            });
 
             peer.on('open', (id) => {
+                console.log('My peer ID is: ' + id);
                 els.myId.innerText = id;
                 updatePeerRegistry();
                 
-                // If we came from a share link, connect now
+                // Auto-connect if ID exists in URL
                 if (pendingPeerId) {
+                    console.log("Attempting auto-connect to:", pendingPeerId);
                     const conn = peer.connect(pendingPeerId, { reliable: true });
                     setupConnection(conn);
                 }
             });
 
             peer.on('connection', (conn) => {
+                console.log("Incoming connection from:", conn.peer);
                 setupConnection(conn);
             });
 
             peer.on('error', (err) => {
-                console.error(err);
-                notify(err.type === 'peer-not-found' ? "ID not found" : "Connection Error", 'error');
+                console.error("Peer Error:", err);
+                if (err.type === 'peer-not-found') {
+                    notify("Peer ID not found", 'error');
+                } else if (err.type === 'unavailable-id') {
+                    notify("ID already in use", 'error');
+                } else {
+                    notify("System Error", 'error');
+                }
             });
         };
 
         els.connectBtn.onclick = () => {
             const id = els.targetId.value.trim();
-            if (!id || id === peer.id) return;
+            if (!id) return notify("Enter an ID", 'error');
+            if (peer && id === peer.id) return notify("Cannot connect to self", 'error');
+            
+            notify("Connecting...");
             const conn = peer.connect(id, { reliable: true });
             setupConnection(conn);
             els.targetId.value = '';
@@ -365,26 +388,51 @@
         els.form.onsubmit = (e) => {
             e.preventDefault();
             const msg = els.input.value.trim();
-            if (!msg || connections.size === 0) return;
+            if (!msg) return;
+            
+            if (connections.size === 0) {
+                notify("No peers connected", 'error');
+                return;
+            }
 
-            connections.forEach(conn => conn.open && conn.send(msg));
-            addMessage(myName, msg, "me");
-            els.input.value = '';
+            let sent = false;
+            connections.forEach(conn => {
+                if (conn.open) {
+                    conn.send(msg);
+                    sent = true;
+                }
+            });
+
+            if (sent) {
+                addMessage(myName, msg, "me");
+                els.input.value = '';
+            } else {
+                notify("Failed to send", 'error');
+            }
         };
 
         document.getElementById('copy-id').onclick = function() {
             const id = els.myId.innerText;
-            if (id.includes('...')) return;
+            if (id.includes('Connecting')) return;
             
-            // Create a shareable URL
+            // Generate full URL for sharing
             const shareUrl = `${window.location.origin}${window.location.pathname}?peer=${id}`;
             
-            navigator.clipboard.writeText(shareUrl).then(() => {
+            // Fallback copy for environments where navigator.clipboard might be restricted
+            const textArea = document.createElement("textarea");
+            textArea.value = shareUrl;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
                 notify("Share Link Copied!");
                 const icon = this.querySelector('i');
                 icon.className = "fas fa-check text-emerald-600";
                 setTimeout(() => icon.className = "fas fa-copy", 2000);
-            });
+            } catch (err) {
+                notify("Copy failed", "error");
+            }
+            document.body.removeChild(textArea);
         };
     </script>
 </body>
