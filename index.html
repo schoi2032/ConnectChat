@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ConnectChat | UltraFastChatDevice</title>
+    <title>ConnectChat | Ultra-Private P2P</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -177,7 +177,7 @@
             <div>
                 <h2 class="font-extrabold text-slate-900 tracking-tight text-lg" id="header-name">Maverick</h2>
                 <div class="flex items-center gap-2">
-                    <span id="status-light" class="w-2 h-2 bg-slate-300 rounded-full"></span>
+                    <span id="status-light" class="w-2 h-2 bg-slate-300 rounded-full transition-colors duration-500"></span>
                     <span id="status-text" class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Awaiting Peer</span>
                 </div>
             </div>
@@ -188,7 +188,7 @@
                 <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Share ID</span>
                 <code id="my-id-display" class="text-xs font-bold text-indigo-600 font-mono">---</code>
             </div>
-            <button id="copy-id" class="w-10 h-10 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-indigo-600 transition-all shadow-sm">
+            <button id="copy-id" class="w-10 h-10 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-indigo-600 transition-all shadow-sm active:scale-90">
                 <i class="fas fa-copy"></i>
             </button>
         </div>
@@ -305,13 +305,14 @@
                 </div>
             `;
             connections.forEach((conn) => {
+                const pName = conn.metadata?.name || 'Peer';
                 html += `
                     <div class="p-4 bg-white border border-slate-100 rounded-2xl flex items-center justify-between shadow-sm">
                         <div class="flex items-center gap-4 overflow-hidden">
                             <div class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400">
                                 <i class="fas fa-user text-xs"></i>
                             </div>
-                            <span class="text-sm font-bold text-slate-700 truncate">${conn.metadata?.name || 'Peer'}</span>
+                            <span class="text-sm font-bold text-slate-700 truncate">${pName}</span>
                         </div>
                         <div class="w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_#10b981]"></div>
                     </div>
@@ -321,23 +322,32 @@
 
             if (connections.size > 0) {
                 els.statusLight.className = "w-2 h-2 bg-emerald-500 rounded-full animate-pulse";
-                els.statusText.innerText = "Connection Established";
+                els.statusText.innerText = `${connections.size} Peer(s) Connected`;
                 els.statusText.classList.replace('text-slate-400', 'text-emerald-600');
+                els.radar.style.display = 'none';
+            } else {
+                els.statusLight.className = "w-2 h-2 bg-slate-300 rounded-full";
+                els.statusText.innerText = "Awaiting Peer";
+                els.statusText.classList.replace('text-emerald-600', 'text-slate-400');
+                els.radar.style.display = 'flex';
             }
         }
 
-        // Logic: Initialization
+        // Initialize Peer Engine
         els.startBtn.onclick = () => {
             const name = els.nameIn.value.trim();
             const cid = els.roomIn.value.trim();
-            if (!name) return;
+            if (!name) {
+                notify("Please enter a nickname");
+                return;
+            }
 
             myName = name;
             document.getElementById('header-name').innerText = name;
             els.landing.style.opacity = '0';
             setTimeout(() => els.landing.style.display = 'none', 500);
 
-            // PeerJS Core
+            // PeerJS Core Initialization
             peer = cid ? new Peer(cid) : new Peer();
 
             peer.on('open', (id) => {
@@ -346,29 +356,53 @@
                 updatePeers();
             });
 
+            // Listen for incoming connections
             peer.on('connection', (conn) => {
+                // For incoming connections, metadata is passed automatically
                 setupConn(conn);
             });
 
             peer.on('error', (err) => {
-                console.error(err);
+                console.error("Peer Error:", err);
                 if (err.type === 'unavailable-id') {
-                    alert("Room ID occupied. Try another.");
-                    window.location.reload();
+                    notify("ID already in use");
+                    setTimeout(() => window.location.reload(), 2000);
+                } else if (err.type === 'peer-not-found') {
+                    notify("Peer ID not found");
+                } else {
+                    notify("Link Fault Detected");
                 }
-                notify("Link Fault Detected");
+            });
+
+            peer.on('disconnected', () => {
+                notify("Server Connection Lost");
+                peer.reconnect();
             });
         };
 
-        // Logic: Establish Link
+        // Standard logic for setting up a connection object
         function setupConn(conn) {
+            // Check if we already have this connection
+            if (connections.has(conn.peer)) return;
+
             conn.on('open', () => {
                 connections.set(conn.peer, conn);
                 updatePeers();
-                notify(`${conn.metadata?.name || 'Peer'} Synced`);
+                notify(`${conn.metadata?.name || 'Peer'} Linked`);
+                
+                // Immediately send back our name if we initiated
+                conn.send({ type: 'handshake', name: myName });
             });
 
             conn.on('data', (data) => {
+                if (typeof data === 'object' && data.type === 'handshake') {
+                    // Update the metadata if it comes in via handshake message
+                    conn.metadata = { name: data.name };
+                    updatePeers();
+                    return;
+                }
+                
+                // Regular text message
                 addMessage(conn.metadata?.name || "Peer", data, "them");
             });
 
@@ -376,13 +410,27 @@
                 connections.delete(conn.peer);
                 updatePeers();
                 notify("Link Severed");
-                if (connections.size === 0) els.radar.style.display = 'flex';
+            });
+
+            conn.on('error', (err) => {
+                console.error("Conn Error:", err);
+                connections.delete(conn.peer);
+                updatePeers();
             });
         }
 
+        // Logic for initiating a connection
         els.connectBtn.onclick = () => {
             const target = els.targetId.value.trim();
-            if (!target || target === peer.id || connections.has(target)) return;
+            if (!target) return;
+            if (target === peer.id) {
+                notify("Cannot connect to yourself");
+                return;
+            }
+            if (connections.has(target)) {
+                notify("Already linked");
+                return;
+            }
 
             const conn = peer.connect(target, {
                 metadata: { name: myName },
@@ -396,24 +444,43 @@
         els.form.onsubmit = (e) => {
             e.preventDefault();
             const msg = els.input.value.trim();
-            if (!msg) return;
+            if (!msg || connections.size === 0) return;
 
+            let sentCount = 0;
             connections.forEach(conn => {
-                if (conn.open) conn.send(msg);
+                if (conn.open) {
+                    conn.send(msg);
+                    sentCount++;
+                }
             });
 
-            addMessage(myName, msg, "me");
-            els.input.value = '';
+            if (sentCount > 0) {
+                addMessage(myName, msg, "me");
+                els.input.value = '';
+            } else {
+                notify("No active connections");
+            }
         };
 
         // Utilities
-        document.getElementById('copy-id').onclick = () => {
+        document.getElementById('copy-id').onclick = function() {
             const id = els.myId.innerText;
             if (id === "---") return;
+            
+            // Visual feedback
+            const icon = this.querySelector('i');
+            icon.className = "fas fa-check text-indigo-600";
+            
             navigator.clipboard.writeText(id).then(() => {
                 notify("ID Copied to Clipboard");
+                setTimeout(() => {
+                    icon.className = "fas fa-copy";
+                }, 2000);
             });
         };
+
+        // Auto-focus name input
+        window.onload = () => els.nameIn.focus();
     </script>
 </body>
 </html>
