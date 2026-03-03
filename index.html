@@ -3,164 +3,217 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2P GroupMerge Chat</title>
+    <title>BetterChat</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.0/lucide.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .glass { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(226, 232, 240, 0.5); }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        .message-in { animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden">
+<body class="bg-slate-50 text-slate-800 h-screen overflow-hidden">
 
-    <div id="app" class="flex flex-col h-full">
-        <!-- Header -->
-        <header class="bg-white border-b p-4 flex justify-between items-center shadow-sm shrink-0">
-            <div class="flex items-center gap-2 text-emerald-600">
-                <i data-lucide="shield-check" class="w-6 h-6"></i>
-                <h1 class="text-xl font-bold tracking-tight">P2P Group Chat</h1>
-            </div>
-            <div class="bg-emerald-50 px-3 py-1 rounded-full flex items-center gap-2 text-emerald-700 text-sm font-medium border border-emerald-100">
-                <i data-lucide="users" class="w-4 h-4"></i>
-                <span id="memberCount">1 Online (You)</span>
-            </div>
-        </header>
-
-        <main class="flex-1 flex flex-col md:flex-row overflow-hidden">
-            <!-- Sidebar -->
-            <aside class="w-full md:w-80 bg-white border-r flex flex-col p-4 gap-6 overflow-y-auto shrink-0">
-                <section class="space-y-3">
-                    <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Your P2P Identity</h2>
-                    <div class="p-3 bg-slate-50 rounded-lg border border-slate-100 space-y-2">
-                        <div class="flex items-center gap-2">
-                            <div id="userAvatar" class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-xs">?</div>
-                            <span id="userIdDisplay" class="text-sm font-mono text-slate-600 truncate flex-1 italic">Generating ID...</span>
-                        </div>
-                        <button id="copyBtn" class="w-full flex items-center justify-center gap-2 text-xs py-1.5 bg-white border rounded hover:bg-slate-50 transition-colors">
-                            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
-                            <span>Copy My ID</span>
-                        </button>
+    <div id="app" class="flex h-full w-full overflow-hidden">
+        
+        <!-- Sidebar -->
+        <aside class="w-80 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col z-20">
+            <!-- Sidebar Header -->
+            <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-200">
+                        <i data-lucide="message-square" class="text-white w-5 h-5"></i>
                     </div>
-                </section>
+                    <span class="font-bold text-xl tracking-tight">BetterChat</span>
+                </div>
+                <button id="openSearchBtn" class="p-2 hover:bg-slate-100 rounded-full text-slate-600 transition-colors">
+                    <i data-lucide="plus" class="w-5 h-5"></i>
+                </button>
+            </div>
 
-                <section class="space-y-3">
-                    <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Join a Peer</h2>
-                    <div class="space-y-2">
-                        <input id="joinInput" type="text" placeholder="Paste Peer ID here..." class="w-full p-2.5 text-sm border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-slate-50">
-                        <button id="joinBtn" class="w-full py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50">
-                            Connect & Merge
-                        </button>
-                        <p class="text-[10px] text-slate-400 leading-tight">
-                            * Connect to one person, and your whole group will automatically connect to theirs.
+            <!-- Identity Card -->
+            <div class="p-4 bg-slate-50/50 border-b border-slate-100">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">My P2P ID</div>
+                <div class="flex items-center gap-2 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
+                    <img id="myAvatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=loading" class="w-8 h-8 rounded-lg bg-slate-100" alt="">
+                    <span id="myIdText" class="text-xs font-mono text-slate-500 truncate flex-1 italic">Initializing...</span>
+                    <button id="copyIdBtn" class="p-1.5 hover:bg-slate-100 rounded-md text-slate-400">
+                        <i data-lucide="copy" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Navigation / Room List -->
+            <nav class="flex-1 overflow-y-auto px-2 py-4 space-y-1 custom-scrollbar">
+                <div class="px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Connected Peers</div>
+                <div id="peerList" class="space-y-1">
+                    <div class="px-3 py-4 text-sm text-slate-400 italic">No peers connected yet. Join a friend to start!</div>
+                </div>
+            </nav>
+
+            <!-- Bottom User Profile -->
+            <div class="p-4 border-t border-slate-100 bg-slate-50/80">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
+                        <i data-lucide="user" class="text-green-600 w-5 h-5"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold truncate">You (Local Node)</p>
+                        <p class="text-[10px] text-green-600 font-bold uppercase tracking-tighter flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> Online
                         </p>
                     </div>
-                </section>
+                </div>
+            </div>
+        </aside>
 
-                <section class="flex-1 space-y-3">
-                    <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Connected Peers</h2>
-                    <div id="membersList" class="space-y-1">
-                        <div class="text-xs text-slate-400 italic p-2">No other peers connected.</div>
+        <!-- Main Content (Chat Area) -->
+        <main class="flex-1 flex flex-col bg-white relative">
+            <!-- Chat Header -->
+            <header id="chatHeader" class="h-16 border-b border-slate-100 flex items-center justify-between px-6 bg-white/80 backdrop-blur-md sticky top-0 z-10 hidden">
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+                        <i data-lucide="users" class="w-5 h-5"></i>
                     </div>
-                </section>
-            </aside>
-
-            <!-- Chat Area -->
-            <section class="flex-1 flex flex-col bg-slate-100/50 relative overflow-hidden">
-                <div id="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                    <div class="h-full flex flex-col items-center justify-center text-slate-400 space-y-2">
-                        <i data-lucide="messages-square" class="w-12 h-12 opacity-20"></i>
-                        <p>Waiting for connections...</p>
+                    <div>
+                        <h2 class="font-bold text-lg leading-tight">Group Mesh</h2>
+                        <p id="participantCount" class="text-xs text-slate-400 font-medium">1 participant</p>
                     </div>
                 </div>
+                <div class="flex items-center gap-2">
+                    <button id="headerPlusBtn" class="p-2 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors">
+                        <i data-lucide="user-plus" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </header>
 
-                <form id="chatForm" class="p-4 bg-white border-t flex gap-2 shrink-0">
-                    <input id="msgInput" type="text" class="flex-1 p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50" placeholder="Type a message..." disabled>
-                    <button type="submit" id="sendBtn" class="bg-emerald-600 text-white p-3 rounded-xl hover:bg-emerald-700 transition-colors shadow-md disabled:opacity-50" disabled>
+            <!-- Messages Area -->
+            <div id="messagesContainer" class="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+                <!-- Welcome State -->
+                <div id="welcomeState" class="h-full flex flex-col items-center justify-center text-center p-8">
+                    <div class="w-24 h-24 bg-white rounded-3xl shadow-xl shadow-blue-100/50 flex items-center justify-center mb-8 animate-bounce">
+                        <i data-lucide="message-square" class="w-12 h-12 text-blue-500"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-slate-900 mb-2">P2P Network Ready</h2>
+                    <p class="text-slate-500 max-w-xs mb-8">Establish a connection to another peer to start a shared conversation.</p>
+                    <button id="startChatBtn" class="px-6 py-3 bg-white border border-slate-200 rounded-xl font-semibold shadow-sm hover:shadow-md transition-all flex items-center gap-2">
+                        <i data-lucide="plus" class="w-5 h-5 text-blue-600"></i>
+                        Connect to Peer
+                    </button>
+                </div>
+            </div>
+
+            <!-- Message Input (Hidden until connected) -->
+            <footer id="chatFooter" class="p-4 bg-white border-t border-slate-100 hidden">
+                <form id="msgForm" class="relative flex items-center gap-2 max-w-5xl mx-auto">
+                    <input id="msgInput" type="text" placeholder="Message the group..." class="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-4 pr-12 py-3 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition-all">
+                    <button type="submit" class="absolute right-2 p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-md">
                         <i data-lucide="send" class="w-5 h-5"></i>
                     </button>
                 </form>
-            </section>
+            </footer>
         </main>
+
+        <!-- Modal -->
+        <div id="modalOverlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-95 transition-all">
+                <div class="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    <h3 class="font-bold text-xl">Connect to Peer</h3>
+                    <button id="closeModalBtn" class="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div class="relative">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                        <input id="peerJoinInput" type="text" placeholder="Enter Peer ID..." class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all">
+                    </div>
+                    <button id="joinConfirmBtn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
+                        Connect Now
+                    </button>
+                    <p class="text-xs text-slate-400 text-center italic">Everyone you are already connected to will join this group automatically.</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-        // State
+        // --- App State ---
         let peer = null;
         let myId = null;
         const connections = new Map(); // peerId -> DataConnection
-        const messages = [];
 
-        // UI Selectors
-        const userIdDisplay = document.getElementById('userIdDisplay');
-        const userAvatar = document.getElementById('userAvatar');
-        const copyBtn = document.getElementById('copyBtn');
-        const joinInput = document.getElementById('joinInput');
-        const joinBtn = document.getElementById('joinBtn');
-        const membersList = document.getElementById('membersList');
-        const memberCount = document.getElementById('memberCount');
+        // --- Selectors ---
+        const myIdText = document.getElementById('myIdText');
+        const myAvatar = document.getElementById('myAvatar');
+        const peerList = document.getElementById('peerList');
+        const participantCount = document.getElementById('participantCount');
         const messagesContainer = document.getElementById('messagesContainer');
-        const chatForm = document.getElementById('chatForm');
+        const welcomeState = document.getElementById('welcomeState');
+        const chatHeader = document.getElementById('chatHeader');
+        const chatFooter = document.getElementById('chatFooter');
+        const msgForm = document.getElementById('msgForm');
         const msgInput = document.getElementById('msgInput');
-        const sendBtn = document.getElementById('sendBtn');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const peerJoinInput = document.getElementById('peerJoinInput');
 
-        // Initialization
+        // --- Initialization ---
         window.onload = () => {
             lucide.createIcons();
-            initPeer();
+            initP2P();
+            setupEventListeners();
         };
 
-        function initPeer() {
-            // Create a random short ID or let PeerJS generate one
+        function initP2P() {
             peer = new Peer();
 
             peer.on('open', (id) => {
                 myId = id;
-                userIdDisplay.textContent = id;
-                userAvatar.textContent = id.substring(0, 2).toUpperCase();
-                msgInput.disabled = false;
-                sendBtn.disabled = false;
-                addSystemMessage("Your P2P node is ready.");
+                myIdText.textContent = id;
+                myAvatar.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`;
+                addSystemMessage("P2P Mesh Network Node Initialized");
             });
 
             peer.on('connection', (conn) => {
-                setupConnection(conn);
+                handleConnection(conn);
             });
 
             peer.on('error', (err) => {
-                console.error("Peer error:", err);
-                showStatus("Connection Error", "bg-red-100 text-red-600");
+                console.error("PeerJS Error:", err);
+                alert("Connection error: " + err.type);
             });
         }
 
-        function setupConnection(conn) {
+        function handleConnection(conn) {
             conn.on('open', () => {
                 if (connections.has(conn.peer)) return;
 
                 connections.set(conn.peer, conn);
-                addSystemMessage(`Connected to ${conn.peer.substring(0, 5)}...`);
-                updateUI();
+                addSystemMessage(`User ${conn.peer.substring(0, 4)} joined the mesh`);
+                updateUIState();
 
-                // MERGE LOGIC: Tell the new peer about all my other connections
-                // so they can connect to them too (Mesh network)
-                const otherPeers = Array.from(connections.keys()).filter(id => id !== conn.peer);
-                if (otherPeers.length > 0) {
-                    conn.send({ type: 'mesh-update', peers: otherPeers });
+                // Group Merge Logic: Share current connection list so the new peer can join everyone
+                const knownPeers = Array.from(connections.keys()).filter(id => id !== conn.peer);
+                if (knownPeers.length > 0) {
+                    conn.send({ type: 'mesh-sync', peers: knownPeers });
                 }
             });
 
             conn.on('data', (data) => {
                 if (data.type === 'chat') {
                     renderMessage(data.sender, data.text);
-                } else if (data.type === 'mesh-update') {
-                    // Try to connect to any new peers I don't know yet
-                    data.peers.forEach(peerId => {
-                        if (peerId !== myId && !connections.has(peerId)) {
-                            const newConn = peer.connect(peerId);
-                            setupConnection(newConn);
+                } else if (data.type === 'mesh-sync') {
+                    // Try to connect to any peer I'm not already connected to
+                    data.peers.forEach(pid => {
+                        if (pid !== myId && !connections.has(pid)) {
+                            const newConn = peer.connect(pid);
+                            handleConnection(newConn);
                         }
                     });
                 }
@@ -168,107 +221,129 @@
 
             conn.on('close', () => {
                 connections.delete(conn.peer);
-                addSystemMessage(`User ${conn.peer.substring(0, 5)} disconnected.`);
-                updateUI();
+                addSystemMessage(`User ${conn.peer.substring(0, 4)} left`);
+                updateUIState();
             });
         }
 
-        joinBtn.onclick = () => {
-            const targetId = joinInput.value.trim();
-            if (!targetId || targetId === myId || connections.has(targetId)) return;
+        // --- UI Operations ---
 
-            const conn = peer.connect(targetId);
-            setupConnection(conn);
-            joinInput.value = '';
-        };
-
-        chatForm.onsubmit = (e) => {
-            e.preventDefault();
-            const text = msgInput.value.trim();
-            if (!text) return;
-
-            msgInput.value = '';
+        function updateUIState() {
+            const hasPeers = connections.size > 0;
+            welcomeState.classList.toggle('hidden', hasPeers);
+            chatHeader.classList.toggle('hidden', !hasPeers);
+            chatFooter.classList.toggle('hidden', !hasPeers);
             
-            // Broadcast to all peers
-            const payload = { type: 'chat', sender: myId, text: text };
-            connections.forEach(conn => conn.send(payload));
-
-            // Show locally
-            renderMessage(myId, text);
-        };
+            participantCount.textContent = `${connections.size + 1} participant${connections.size === 0 ? '' : 's'}`;
+            
+            if (connections.size === 0) {
+                peerList.innerHTML = `<div class="px-3 py-4 text-sm text-slate-400 italic">No peers connected yet. Join a friend to start!</div>`;
+            } else {
+                peerList.innerHTML = Array.from(connections.keys()).map(pid => `
+                    <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${pid}" class="w-8 h-8 rounded-lg bg-slate-100 shadow-sm" alt="">
+                        <span class="truncate flex-1 text-left font-semibold">Peer-${pid.substring(0, 6)}</span>
+                        <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                    </div>
+                `).join('');
+            }
+            lucide.createIcons();
+        }
 
         function renderMessage(senderId, text) {
             const isMe = senderId === myId;
-            const msgDiv = document.createElement('div');
-            msgDiv.className = `flex ${isMe ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`;
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex ${isMe ? 'justify-end' : 'justify-start'} group message-in`;
             
-            msgDiv.innerHTML = `
-                <div class="max-w-[75%] ${isMe ? 'bg-emerald-600 text-white' : 'bg-white text-slate-800'} p-3 rounded-2xl shadow-sm border ${isMe ? 'border-emerald-500' : 'border-slate-200'}">
-                    ${!isMe ? `<p class="text-[10px] font-bold opacity-70 mb-1">PEER-${senderId.substring(0, 4)}</p>` : ''}
-                    <p class="text-sm leading-relaxed">${text}</p>
+            messageDiv.innerHTML = `
+                <div class="flex max-w-[80%] ${isMe ? 'flex-row-reverse' : 'flex-row'} items-end gap-3">
+                    <div class="w-8 flex-shrink-0">
+                        ${!isMe ? `<img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${senderId}" class="w-8 h-8 rounded-lg shadow-sm" alt="">` : ''}
+                    </div>
+                    <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'}">
+                        ${!isMe ? `<span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 ml-1">Peer-${senderId.substring(0,4)}</span>` : ''}
+                        <div class="px-4 py-2.5 rounded-2xl shadow-sm text-sm ${
+                            isMe 
+                            ? 'bg-blue-600 text-white rounded-br-none' 
+                            : 'bg-slate-100 text-slate-800 rounded-bl-none'
+                        }">
+                            ${text}
+                        </div>
+                    </div>
                 </div>
             `;
 
-            if (messagesContainer.querySelector('.opacity-20')) {
-                messagesContainer.innerHTML = '';
-            }
-
-            messagesContainer.appendChild(msgDiv);
+            messagesContainer.appendChild(messageDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
         function addSystemMessage(text) {
             const div = document.createElement('div');
-            div.className = "flex justify-center my-2";
-            div.innerHTML = `<span class="bg-slate-200 text-slate-600 px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-widest">${text}</span>`;
+            div.className = "flex justify-center my-2 animate-in fade-in zoom-in duration-500";
+            div.innerHTML = `<span class="bg-slate-100 text-slate-400 px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-widest border border-slate-200/50">${text}</span>`;
             messagesContainer.appendChild(div);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
-        function updateUI() {
-            memberCount.textContent = `${connections.size + 1} Online`;
-            
-            if (connections.size === 0) {
-                membersList.innerHTML = `<div class="text-xs text-slate-400 italic p-2">No other peers connected.</div>`;
-            } else {
-                membersList.innerHTML = Array.from(connections.keys()).map(id => `
-                    <div class="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-md transition-colors">
-                        <div class="w-2 h-2 rounded-full bg-slate-300"></div>
-                        <span class="text-sm text-slate-700 font-medium truncate">Peer-${id.substring(0, 6)}</span>
-                    </div>
-                `).join('') + `
-                    <div class="flex items-center gap-2 p-2 bg-emerald-50 rounded-md">
-                        <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-                        <span class="text-sm text-emerald-700 font-bold truncate">You</span>
-                    </div>
-                `;
-            }
-        }
+        function setupEventListeners() {
+            // Modal Toggles
+            const showModal = () => {
+                modalOverlay.classList.remove('hidden');
+                setTimeout(() => modalOverlay.firstElementChild.classList.remove('scale-95'), 10);
+                peerJoinInput.focus();
+            };
+            const hideModal = () => {
+                modalOverlay.firstElementChild.classList.add('scale-95');
+                setTimeout(() => modalOverlay.classList.add('hidden'), 200);
+            };
 
-        copyBtn.onclick = () => {
-            const text = myId;
-            const tempInput = document.createElement('input');
-            tempInput.value = text;
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            document.execCommand('copy');
-            document.body.removeChild(tempInput);
-            
-            const originalText = copyBtn.innerHTML;
-            copyBtn.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 text-emerald-500"></i><span>Copied!</span>`;
-            lucide.createIcons();
-            setTimeout(() => {
-                copyBtn.innerHTML = originalText;
+            document.getElementById('openSearchBtn').onclick = showModal;
+            document.getElementById('headerPlusBtn').onclick = showModal;
+            document.getElementById('startChatBtn').onclick = showModal;
+            document.getElementById('closeModalBtn').onclick = hideModal;
+
+            // Connection Action
+            document.getElementById('joinConfirmBtn').onclick = () => {
+                const targetId = peerJoinInput.value.trim();
+                if (targetId && targetId !== myId) {
+                    const conn = peer.connect(targetId);
+                    handleConnection(conn);
+                    hideModal();
+                    peerJoinInput.value = '';
+                }
+            };
+
+            // Messaging
+            msgForm.onsubmit = (e) => {
+                e.preventDefault();
+                const text = msgInput.value.trim();
+                if (!text || connections.size === 0) return;
+
+                msgInput.value = '';
+                const payload = { type: 'chat', sender: myId, text: text };
+                
+                // Broadcast to all
+                connections.forEach(conn => conn.send(payload));
+                renderMessage(myId, text);
+            };
+
+            // Clipboard
+            document.getElementById('copyIdBtn').onclick = () => {
+                const tempInput = document.createElement('input');
+                tempInput.value = myId;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempInput);
+                
+                const originalIcon = document.getElementById('copyIdBtn').innerHTML;
+                document.getElementById('copyIdBtn').innerHTML = `<i data-lucide="check" class="w-4 h-4 text-green-500"></i>`;
                 lucide.createIcons();
-            }, 2000);
-        };
-
-        function showStatus(msg, classes) {
-            const toast = document.createElement('div');
-            toast.className = `fixed bottom-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full text-xs font-bold shadow-lg z-50 animate-bounce ${classes}`;
-            toast.textContent = msg;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
+                setTimeout(() => {
+                    document.getElementById('copyIdBtn').innerHTML = originalIcon;
+                    lucide.createIcons();
+                }, 2000);
+            };
         }
     </script>
 </body>
