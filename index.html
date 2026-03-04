@@ -165,9 +165,8 @@
         let peer = null;
         let connections = new Map();
         let knownNodeIds = new Set();
-        let myName = localStorage.getItem('chat-nickname') || "";
-        let messageHistory = JSON.parse(localStorage.getItem('chat-history')) || [];
-
+        let myName = "";
+        
         let audioCtx = null;
         function playPop() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -208,8 +207,6 @@
             radar: document.getElementById('radar-container'),
             headerName: document.getElementById('header-name')
         };
-
-        if (myName) els.nameIn.value = myName;
 
         function notify(msg) {
             els.toastMsg.innerText = msg;
@@ -253,7 +250,8 @@
             conn.on('error', () => { connections.delete(conn.peer); updateUI(); });
         }
 
-        function addMessage(sender, text, type, save = true) {
+        function addMessage(sender, text, type) {
+            if (!els.radar) return;
             els.radar.style.display = 'none';
             const div = document.createElement('div');
             div.className = `flex flex-col ${type === 'me' ? 'items-end' : 'items-start'}`;
@@ -264,19 +262,6 @@
             `;
             els.chat.appendChild(div);
             els.chat.scrollTop = els.chat.scrollHeight;
-
-            if (save) {
-                messageHistory.push({ sender, text, type });
-                if (messageHistory.length > 50) messageHistory.shift();
-                localStorage.setItem('chat-history', JSON.stringify(messageHistory));
-            }
-        }
-
-        function loadHistory() {
-            if (messageHistory.length > 0) {
-                els.radar.style.display = 'none';
-                messageHistory.forEach(msg => addMessage(msg.sender, msg.text, msg.type, false));
-            }
         }
 
         function updateUI() {
@@ -292,27 +277,20 @@
             els.statusText.innerText = connections.size > 0 ? `${connections.size} Active in Mesh` : "Online - Standalone";
         }
 
-        els.startBtn.onclick = () => {
-            const name = els.nameIn.value.trim();
-            const customId = els.customIdIn.value.trim();
-            if (!name) return alert("Nickname required");
-            
+        function startSession(name, id) {
             myName = name;
-            localStorage.setItem('chat-nickname', name);
             els.headerName.innerText = name;
             els.landing.style.display = 'none';
 
-            // Create peer with optional custom ID
-            peer = new Peer(customId || undefined, {
+            peer = new Peer(id || undefined, {
                 debug: 1,
                 config: { 'iceServers': [{ url: 'stun:stun.l.google.com:19302' }] }
             });
 
-            peer.on('open', (id) => { 
-                els.myId.innerText = id; 
-                knownNodeIds.add(id);
+            peer.on('open', (newId) => { 
+                els.myId.innerText = newId; 
+                knownNodeIds.add(newId);
                 notify("P2P Node Active");
-                loadHistory(); 
             });
 
             peer.on('error', (err) => {
@@ -326,6 +304,13 @@
 
             peer.on('connection', setupConnection);
             peer.on('disconnected', () => peer.reconnect());
+        }
+
+        els.startBtn.onclick = () => {
+            const name = els.nameIn.value.trim();
+            const customId = els.customIdIn.value.trim();
+            if (!name) return alert("Nickname required");
+            startSession(name, customId);
         };
 
         els.connectBtn.onclick = () => {
