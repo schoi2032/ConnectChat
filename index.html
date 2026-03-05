@@ -3,299 +3,324 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connect Chat Pro | Auto-Sync P2P</title>
+    <title>ConnectChat | P2P Messenger</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
         body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background: #0f172a;
-            color: #f8fafc;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f7ff;
         }
 
-        .glass {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 2rem;
+        .chat-container {
+            height: calc(100vh - 180px);
         }
 
-        .accent-gradient {
-            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+        .message-bubble {
+            max-width: 80%;
+            word-wrap: break-word;
         }
 
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.1);
+            background: #cbd5e1;
             border-radius: 10px;
         }
 
-        .pulse { animation: pulse-ring 1.5s cubic-bezier(0.24, 0, 0.38, 1) infinite; }
-        @keyframes pulse-ring {
-            0% { transform: scale(0.9); opacity: 1; }
-            100% { transform: scale(1.3); opacity: 0; }
-        }
-
-        .message-in { animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(20px); }
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
         }
     </style>
 </head>
-<body class="p-4">
+<body class="flex items-center justify-center min-h-screen p-4">
 
-    <!-- SETUP SCREEN -->
-    <div id="setup-screen" class="w-full max-w-lg glass p-8 shadow-2xl relative overflow-hidden">
-        <div class="absolute -top-24 -left-24 w-48 h-48 bg-indigo-500/20 blur-3xl rounded-full"></div>
-        
+    <!-- Auth / Login Screen -->
+    <div id="auth-screen" class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 animate-fade-in">
         <div class="text-center mb-8">
-            <h1 class="text-5xl font-extrabold tracking-tight mb-2">Connect<span class="text-indigo-400">Chat</span></h1>
-            <p class="text-slate-400">Instant P2P. No Copy-Paste required.</p>
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4 shadow-lg shadow-blue-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800">ConnectChat</h1>
+            <p class="text-gray-500 mt-2">Enter your details to start chatting</p>
         </div>
 
-        <div id="initial-step" class="space-y-4">
-            <div class="bg-white/5 p-4 rounded-2xl border border-white/10">
-                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Your Identity</label>
-                <input type="text" id="username-input" placeholder="Enter nickname..." class="w-full bg-transparent text-xl font-bold focus:outline-none placeholder:text-slate-600">
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Display Name</label>
+                <input type="text" id="username" placeholder="Your Name" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all">
             </div>
-            <div class="bg-white/5 p-4 rounded-2xl border border-white/10">
-                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Invite Key (Share this with your friend)</label>
-                <input type="text" id="custom-room-id" placeholder="e.g. secret-room-99" class="w-full bg-transparent text-lg font-bold focus:outline-none placeholder:text-slate-600 uppercase">
-                <p class="text-[10px] text-slate-500 mt-2 italic">If both people use the same key, you'll connect automatically.</p>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Custom ID</label>
+                <input type="text" id="peer-id" placeholder="Choose a unique ID (e.g. user123)" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all">
             </div>
-            <button onclick="startConnection()" id="connect-btn" class="w-full py-4 accent-gradient rounded-2xl font-bold text-white shadow-lg hover:brightness-110 transition-all">
-                Connect Now
+            <button onclick="initSession()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all transform active:scale-95 shadow-md shadow-blue-100 mt-4">
+                Initialize Session
             </button>
-        </div>
-
-        <!-- Connection Status Overlay -->
-        <div id="connecting-overlay" class="hidden flex flex-col items-center justify-center py-12 space-y-6">
-            <div class="relative">
-                <div class="absolute inset-0 rounded-full bg-indigo-500 pulse"></div>
-                <div class="relative w-16 h-16 bg-indigo-600 rounded-full flex items-center justify-center">
-                    <svg class="w-8 h-8 text-white animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                </div>
-            </div>
-            <div class="text-center">
-                <h3 class="text-xl font-bold text-white" id="status-text">Searching for peer...</h3>
-                <p class="text-slate-400 text-sm mt-1">Room: <span id="status-room" class="text-indigo-400 font-mono"></span></p>
-            </div>
-            <button onclick="location.reload()" class="text-xs text-slate-500 hover:text-white underline">Cancel</button>
         </div>
     </div>
 
-    <!-- CHAT INTERFACE -->
-    <div id="chat-screen" class="hidden w-full max-w-5xl h-[90vh] glass flex flex-col shadow-2xl relative overflow-hidden">
+    <!-- Main Chat Screen -->
+    <div id="chat-screen" class="hidden w-full max-w-4xl bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden h-[90vh] animate-fade-in">
         <!-- Header -->
-        <div class="p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
+        <div class="bg-blue-600 p-4 md:p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div class="flex items-center gap-4">
-                <div class="relative">
-                    <div id="peer-avatar" class="w-12 h-12 rounded-2xl accent-gradient flex items-center justify-center font-bold text-xl uppercase">?</div>
-                    <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-4 border-slate-900 rounded-full"></div>
+                <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                    <span id="user-initial" class="text-xl font-bold">U</span>
                 </div>
                 <div>
-                    <h2 id="peer-name" class="font-bold text-lg text-white">Friend</h2>
-                    <div class="text-xs text-slate-500 flex items-center gap-1">
-                        <span id="room-label" class="bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded text-[10px] font-bold mr-2 uppercase"></span>
-                        Direct P2P Tunnel
-                    </div>
+                    <h2 id="display-name" class="font-bold text-lg leading-tight">...</h2>
+                    <p class="text-blue-100 text-xs flex items-center gap-1">
+                        <span class="w-2 h-2 bg-green-400 rounded-full"></span>
+                        My ID: <span id="my-id-display" class="font-mono bg-blue-700 px-1 rounded">...</span>
+                    </p>
                 </div>
             </div>
-            <button onclick="location.reload()" class="p-3 hover:bg-white/5 rounded-xl text-slate-400">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-            </button>
+            <div class="flex items-center gap-2">
+                <input type="text" id="target-id" placeholder="Enter friend's ID" class="bg-blue-700/50 border border-blue-400/30 rounded-lg px-3 py-2 text-sm placeholder-blue-200 outline-none focus:bg-blue-700 transition-all">
+                <button onclick="connectToPeer()" class="bg-white text-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-50 transition-all flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Connect
+                </button>
+            </div>
         </div>
 
-        <!-- Message List -->
-        <div id="messages" class="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar"></div>
+        <!-- Messages Area -->
+        <div id="messages-container" class="flex-grow p-6 overflow-y-auto custom-scrollbar space-y-4 bg-slate-50">
+            <div class="text-center py-10">
+                <p class="text-gray-400 text-sm">Welcome to ConnectChat. Share your ID with friends to start a P2P conversation.</p>
+            </div>
+        </div>
 
         <!-- Input Area -->
-        <div class="p-6 border-t border-white/5 bg-black/10">
-            <form id="chat-form" class="flex items-center gap-4">
-                <label class="cursor-pointer p-3 hover:bg-white/5 rounded-2xl text-slate-400">
-                    <input type="file" id="file-input" class="hidden">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
-                </label>
-                <input type="text" id="message-input" autocomplete="off" placeholder="Write a message..." class="flex-1 bg-white/5 border border-white/10 rounded-2xl px-6 py-4 focus:outline-none focus:ring-2 ring-indigo-500/50">
-                <button type="submit" class="accent-gradient p-4 rounded-2xl text-white shadow-lg">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+        <div class="p-4 bg-white border-t border-gray-100">
+            <form id="chat-form" onsubmit="sendMessage(event)" class="flex gap-2">
+                <input type="text" id="message-input" placeholder="Type a message..." class="flex-grow px-4 py-3 bg-gray-100 rounded-xl border-none focus:ring-2 focus:ring-blue-500 outline-none transition-all" autocomplete="off">
+                <button type="submit" class="bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 transition-all transform active:scale-90">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
                 </button>
             </form>
         </div>
     </div>
 
+    <!-- Notification Sound -->
+    <audio id="notif-sound" src="https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3" preload="auto"></audio>
+
     <script>
-        // --- WebRTC & Signaling Config ---
-        const iceServers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
-        let pc = new RTCPeerConnection(iceServers);
-        let dataChannel = null;
-        let myName = "";
-        let myRoomId = "";
-        let peerName = "Friend";
-        
-        // We use a public websocket relay for the handshake ONLY. 
-        // Once connected, the relay is ignored and communication is pure P2P.
-        let socket;
+        let peer;
+        let connections = {}; // Track all active peer connections
+        let userData = { name: '', id: '' };
 
-        async function startConnection() {
-            myName = document.getElementById('username-input').value.trim() || "User-" + Math.floor(Math.random() * 99);
-            myRoomId = document.getElementById('custom-room-id').value.trim().toUpperCase() || "LOBBY";
+        const authScreen = document.getElementById('auth-screen');
+        const chatScreen = document.getElementById('chat-screen');
+        const messagesContainer = document.getElementById('messages-container');
+        const notifSound = document.getElementById('notif-sound');
 
-            document.getElementById('initial-step').classList.add('hidden');
-            document.getElementById('connecting-overlay').classList.remove('hidden');
-            document.getElementById('status-room').innerText = myRoomId;
+        /**
+         * Initialize PeerJS Session
+         */
+        function initSession() {
+            const name = document.getElementById('username').value.trim();
+            const id = document.getElementById('peer-id').value.trim();
 
-            // Connect to a public signaling relay
-            socket = new WebSocket('wss://connect.websocket.me/v3/1?api_key=o7S68sV7968sV7968sV7'); // Public demo key
-
-            socket.onopen = () => {
-                // Join the room channel
-                socket.send(JSON.stringify({ type: 'join', room: myRoomId }));
-                
-                // One peer acts as the caller (Host), the other as the answerer.
-                // To decide, we wait a moment or just try to offer immediately.
-                initiateHandshake();
-            };
-
-            socket.onmessage = async (e) => {
-                const msg = JSON.parse(e.data);
-                if (msg.room !== myRoomId || msg.sender === myName) return;
-
-                if (msg.type === 'offer') {
-                    peerName = msg.name;
-                    await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
-                    const answer = await pc.createAnswer();
-                    await pc.setLocalDescription(answer);
-                    sendSignal({ type: 'answer', sdp: pc.localDescription, name: myName });
-                } else if (msg.type === 'answer') {
-                    peerName = msg.name;
-                    await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
-                } else if (msg.type === 'candidate') {
-                    try { await pc.addIceCandidate(new RTCIceCandidate(msg.candidate)); } catch(e) {}
-                }
-            };
-        }
-
-        function sendSignal(data) {
-            data.room = myRoomId;
-            data.sender = myName;
-            socket.send(JSON.stringify(data));
-        }
-
-        async function initiateHandshake() {
-            // Setup Data Channel
-            dataChannel = pc.createDataChannel('chat');
-            setupDataHandlers(dataChannel);
-
-            // Setup ICE candidates
-            pc.onicecandidate = (e) => {
-                if (e.candidate) sendSignal({ type: 'candidate', candidate: e.candidate });
-            };
-
-            // Handling incoming channels (for the person who didn't create the offer)
-            pc.ondatachannel = (e) => {
-                dataChannel = e.channel;
-                setupDataHandlers(dataChannel);
-            };
-
-            // Generate Offer
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            sendSignal({ type: 'offer', sdp: pc.localDescription, name: myName });
-        }
-
-        function setupDataHandlers(channel) {
-            channel.onopen = () => {
-                document.getElementById('setup-screen').classList.add('hidden');
-                document.getElementById('chat-screen').classList.remove('hidden');
-                document.getElementById('peer-name').innerText = peerName;
-                document.getElementById('peer-avatar').innerText = peerName[0];
-                document.getElementById('room-label').innerText = myRoomId;
-                appendStatus(`Direct connection with ${peerName} secured.`);
-                // We can close the signaling socket now, we are P2P!
-                socket.close();
-            };
-
-            channel.onmessage = (e) => {
-                const data = JSON.parse(e.data);
-                if (data.type === 'text') appendMessage('peer', data.content);
-                if (data.type === 'file') handleFileDownload(data);
-            };
-        }
-
-        // --- UI Interactions ---
-        const chatForm = document.getElementById('chat-form');
-        const msgInput = document.getElementById('message-input');
-        const fileInput = document.getElementById('file-input');
-        const messagesDiv = document.getElementById('messages');
-
-        chatForm.onsubmit = (e) => {
-            e.preventDefault();
-            const text = msgInput.value.trim();
-            if (text && dataChannel?.readyState === 'open') {
-                dataChannel.send(JSON.stringify({ type: 'text', content: text }));
-                appendMessage('me', text);
-                msgInput.value = '';
+            if (!name || !id) {
+                alert("Please enter both name and ID.");
+                return;
             }
-        };
 
-        fileInput.onchange = (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = () => {
-                dataChannel.send(JSON.stringify({ type: 'file', name: file.name, data: reader.result }));
-                appendStatus(`Sent: ${file.name}`);
+            userData.name = name;
+            userData.id = id;
+
+            // Initialize PeerJS
+            // No API key needed for public cloud server
+            peer = new Peer(id);
+
+            peer.on('open', (id) => {
+                console.log('My peer ID is: ' + id);
+                document.getElementById('display-name').innerText = userData.name;
+                document.getElementById('my-id-display').innerText = id;
+                document.getElementById('user-initial').innerText = userData.name.charAt(0).toUpperCase();
+                
+                authScreen.classList.add('hidden');
+                chatScreen.classList.remove('hidden');
+            });
+
+            peer.on('connection', (conn) => {
+                setupConnection(conn);
+            });
+
+            peer.on('error', (err) => {
+                console.error(err);
+                if (err.type === 'unavailable-id') {
+                    alert('This ID is already taken. Please choose another one.');
+                } else {
+                    alert('PeerJS Error: ' + err.type);
+                }
+            });
+        }
+
+        /**
+         * Connect to a specific Peer ID
+         */
+        function connectToPeer() {
+            const targetId = document.getElementById('target-id').value.trim();
+            
+            if (!targetId) return;
+            if (targetId === userData.id) {
+                alert("You cannot connect to yourself!");
+                return;
+            }
+            if (connections[targetId]) {
+                alert("Already connected to this user.");
+                return;
+            }
+
+            const conn = peer.connect(targetId);
+            setupConnection(conn);
+            document.getElementById('target-id').value = '';
+        }
+
+        /**
+         * Handle connection events and data flow
+         */
+        function setupConnection(conn) {
+            conn.on('open', () => {
+                // If this is a new connection, register it
+                if (!connections[conn.peer]) {
+                    connections[conn.peer] = conn;
+                    
+                    // Share current peer list to expand the group automatically
+                    const peerIds = Object.keys(connections).filter(id => id !== conn.peer);
+                    conn.send({
+                        type: 'system',
+                        action: 'handshake',
+                        name: userData.name,
+                        existingPeers: peerIds
+                    });
+
+                    addSystemMessage(`${conn.peer} joined the conversation.`);
+                }
+            });
+
+            conn.on('data', (data) => {
+                if (data.type === 'chat') {
+                    renderMessage(data.sender, data.text, false);
+                    playSound();
+                } else if (data.type === 'system') {
+                    handleSystemMessage(data, conn);
+                }
+            });
+
+            conn.on('close', () => {
+                addSystemMessage(`${conn.peer} disconnected.`);
+                delete connections[conn.peer];
+            });
+            
+            conn.on('error', () => {
+                delete connections[conn.peer];
+            });
+        }
+
+        /**
+         * Handle System Logic (Automatic Group Expansion)
+         */
+        function handleSystemMessage(data, conn) {
+            if (data.action === 'handshake') {
+                // If the new peer tells us about other peers, connect to them too
+                if (data.existingPeers && data.existingPeers.length > 0) {
+                    data.existingPeers.forEach(peerId => {
+                        if (peerId !== userData.id && !connections[peerId]) {
+                            const newConn = peer.connect(peerId);
+                            setupConnection(newConn);
+                        }
+                    });
+                }
+            }
+        }
+
+        /**
+         * Send message to all connected peers
+         */
+        function sendMessage(e) {
+            e.preventDefault();
+            const input = document.getElementById('message-input');
+            const text = input.value.trim();
+
+            if (!text) return;
+
+            const messageObj = {
+                type: 'chat',
+                sender: userData.name,
+                text: text,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             };
-            reader.readAsDataURL(file);
-        };
 
-        function handleFileDownload(file) {
-            appendStatus(`${peerName} sent a file.`);
-            const link = document.createElement('a');
-            link.href = file.data; link.download = file.name;
-            link.className = "block mt-2 p-3 bg-white/10 rounded-xl text-xs text-indigo-400 font-bold border border-indigo-500/20";
-            link.innerText = `⬇ Download ${file.name}`;
-            messagesDiv.appendChild(link);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            // Broadcast to all peers
+            Object.values(connections).forEach(conn => {
+                if (conn.open) {
+                    conn.send(messageObj);
+                }
+            });
+
+            renderMessage('You', text, true);
+            input.value = '';
         }
 
-        function appendMessage(sender, text) {
-            const div = document.createElement('div');
-            div.className = `flex w-full ${sender === 'me' ? 'justify-end' : 'justify-start'} message-in`;
-            div.innerHTML = `
-                <div class="max-w-[80%]">
-                    <div class="flex items-center gap-2 mb-1 px-2 ${sender === 'me' ? 'flex-row-reverse' : ''}">
-                        <span class="text-[9px] font-bold uppercase text-slate-500 tracking-widest">${sender === 'me' ? myName : peerName}</span>
-                    </div>
-                    <div class="px-5 py-3 rounded-2xl shadow-xl ${
-                        sender === 'me' ? 'accent-gradient text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none border border-white/5'
-                    }">
-                        <p class="text-sm">${escapeHtml(text)}</p>
-                    </div>
+        /**
+         * UI Rendering Helpers
+         */
+        function renderMessage(sender, text, isMe) {
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} space-y-1 animate-fade-in`;
+            
+            msgDiv.innerHTML = `
+                <span class="text-xs font-semibold text-gray-500 px-2">${sender}</span>
+                <div class="message-bubble px-4 py-2 rounded-2xl ${isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white text-gray-800 shadow-sm border border-gray-100 rounded-tl-none'}">
+                    <p class="text-sm">${escapeHTML(text)}</p>
                 </div>
+                <span class="text-[10px] text-gray-400 px-2">${time}</span>
             `;
-            messagesDiv.appendChild(div);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+            messagesContainer.appendChild(msgDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
-        function appendStatus(txt) {
+        function addSystemMessage(text) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = "flex justify-center my-2";
+            msgDiv.innerHTML = `<span class="bg-gray-200 text-gray-500 text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-full">${text}</span>`;
+            messagesContainer.appendChild(msgDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function playSound() {
+            notifSound.currentTime = 0;
+            notifSound.play().catch(e => console.log("Audio play blocked by browser. Interaction required."));
+        }
+
+        function escapeHTML(str) {
             const div = document.createElement('div');
-            div.className = "text-center text-[10px] uppercase text-slate-600 font-bold py-2 tracking-widest";
-            div.innerText = txt;
-            messagesDiv.appendChild(div);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            div.textContent = str;
+            return div.innerHTML;
         }
-
-        function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
     </script>
 </body>
 </html>
