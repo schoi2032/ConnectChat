@@ -3,365 +3,299 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ConnectChat | Mesh Ready</title>
+    <title>Connect Chat Pro | Auto-Sync P2P</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // CONFIG & STATE
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'connect-chat-v3';
-
-        let peer = null;
-        let myId = null;
-        let currentRoom = "";
-        let myName = "";
-        const connections = new Map();
-
-        const getEls = () => ({
-            landing: document.getElementById('landing'),
-            chatSection: document.getElementById('chat-section'),
-            nameIn: document.getElementById('name-input'),
-            roomIn: document.getElementById('room-input'),
-            startBtn: document.getElementById('start-btn'),
-            chatWindow: document.getElementById('chat-window'),
-            chatForm: document.getElementById('chat-form'),
-            chatInput: document.getElementById('chat-input'),
-            peerList: document.getElementById('peer-list'),
-            roomDisplay: document.getElementById('room-display'),
-            debugLog: document.getElementById('debug-log'),
-            btnText: document.getElementById('btn-text'),
-            btnLoader: document.getElementById('btn-loader')
-        });
-
-        function log(msg, type = 'info') {
-            const els = getEls();
-            const time = new Date().toLocaleTimeString().split(' ')[0];
-            const div = document.createElement('div');
-            div.className = `mb-1 py-1 border-b border-white/5 ${type === 'err' ? 'text-rose-400' : 'text-emerald-400'}`;
-            div.innerHTML = `<span class="opacity-30 mr-2 text-[8px]">${time}</span><span class="font-medium">${msg}</span>`;
-            if (els.debugLog) {
-                els.debugLog.appendChild(div);
-                els.debugLog.scrollTop = els.debugLog.scrollHeight;
-            }
-        }
-
-        async function ensureAuth() {
-            if (auth.currentUser) return auth.currentUser;
-            log("Shields up: Authenticating...");
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    return (await signInWithCustomToken(auth, __initial_auth_token)).user;
-                } else {
-                    return (await signInAnonymously(auth)).user;
-                }
-            } catch (err) {
-                log("Auth Blocked: " + err.message, 'err');
-                throw err;
-            }
-        }
-
-        async function startMesh(user) {
-            log("Initializing P2P Mesh...");
-            peer = new Peer(user.uid, {
-                debug: 1,
-                config: { 'iceServers': [{ urls: 'stun:stun.l.google.com:19302' }] }
-            });
-
-            peer.on('open', (id) => {
-                myId = id;
-                log("Mesh ID Assigned: " + id.substring(0, 8));
-                enterRoom();
-            });
-
-            peer.on('connection', (conn) => {
-                log("Inbound connection received");
-                handleConnection(conn);
-            });
-
-            peer.on('error', (err) => {
-                log("Network Warning: " + err.type, 'err');
-                if (err.type === 'unavailable-id') {
-                    log("ID conflict - regenerating...");
-                    peer.destroy();
-                    peer = new Peer(); 
-                }
-            });
-        }
-
-        async function enterRoom() {
-            const els = getEls();
-            els.landing.classList.add('opacity-0', 'pointer-events-none');
-            setTimeout(() => els.landing.classList.add('hidden'), 500);
-            
-            els.chatSection.classList.remove('hidden');
-            els.roomDisplay.innerText = currentRoom;
-            
-            log("Broadcasting presence to #" + currentRoom);
-            const presenceRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoom, 'peers', myId);
-            
-            try {
-                await setDoc(presenceRef, {
-                    name: myName,
-                    lastSeen: serverTimestamp()
-                });
-                
-                const peersCol = collection(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoom, 'peers');
-                onSnapshot(peersCol, (snap) => {
-                    snap.docChanges().forEach(change => {
-                        const peerId = change.doc.id;
-                        if (change.type === 'added' && peerId !== myId && !connections.has(peerId)) {
-                            log("Node discovery: " + peerId.substring(0, 5));
-                            connectToPeer(peerId);
-                        }
-                    });
-                }, (err) => log("Sync interrupted", "err"));
-
-                setInterval(() => {
-                    setDoc(presenceRef, { lastSeen: serverTimestamp() }, { merge: true });
-                }, 15000);
-
-            } catch (err) {
-                log("Database sync error", 'err');
-            }
-        }
-
-        function connectToPeer(targetId) {
-            const conn = peer.connect(targetId, { metadata: { name: myName } });
-            handleConnection(conn);
-        }
-
-        function handleConnection(conn) {
-            conn.on('open', () => {
-                log("Linked with: " + (conn.metadata?.name || 'Peer'));
-                connections.set(conn.peer, conn);
-                updatePeerList();
-                conn.send({ type: 'identity', name: myName });
-            });
-
-            conn.on('data', (data) => {
-                if (data.type === 'identity') {
-                    conn.peerName = data.name;
-                    updatePeerList();
-                } else if (data.type === 'chat') {
-                    addMessage(data.sender, data.text, 'them');
-                }
-            });
-
-            conn.on('close', () => {
-                connections.delete(conn.peer);
-                updatePeerList();
-                log("Connection dropped");
-            });
-        }
-
-        function updatePeerList() {
-            const els = getEls();
-            let html = '';
-            connections.forEach(c => {
-                html += `
-                <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl mb-2 border border-white/5 animate-slide-up">
-                    <div class="relative">
-                        <div class="w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.8)]"></div>
-                    </div>
-                    <span class="text-xs font-bold text-slate-200 truncate">${c.peerName || 'Connecting...'}</span>
-                </div>`;
-            });
-            els.peerList.innerHTML = html || '<div class="text-[10px] text-slate-500 italic text-center py-8 border-2 border-dashed border-white/5 rounded-2xl">Waiting for peers to join...</div>';
-        }
-
-        function addMessage(sender, text, type) {
-            const els = getEls();
-            const div = document.createElement('div');
-            div.className = `flex flex-col ${type === 'me' ? 'items-end' : 'items-start'} mb-6 animate-slide-up`;
-            div.innerHTML = `
-                <div class="flex items-center gap-2 mb-1.5 px-1">
-                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">${sender}</span>
-                </div>
-                <div class="max-w-[85%] px-4 py-3 rounded-2xl shadow-xl ${type === 'me' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-slate-800 text-slate-100 border border-white/5 rounded-tl-none'}">
-                    <p class="text-sm leading-relaxed whitespace-pre-wrap">${text.replace(/</g, "&lt;")}</p>
-                </div>
-            `;
-            els.chatWindow.appendChild(div);
-            els.chatWindow.scrollTop = els.chatWindow.scrollHeight;
-        }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            const els = getEls();
-            log("Ready for Uplink.");
-
-            els.startBtn.addEventListener('click', async (e) => {
-                e.preventDefault();
-                log("Uplink requested...");
-                
-                myName = els.nameIn.value.trim() || "User_" + Math.floor(Math.random()*1000);
-                currentRoom = els.roomIn.value.trim().toLowerCase() || "lobby";
-                
-                // UI Feedback
-                els.btnText.innerText = "ESTABLISHING LINK...";
-                els.btnLoader.classList.remove('hidden');
-                els.startBtn.classList.add('scale-[0.98]', 'brightness-90');
-                els.startBtn.disabled = true;
-
-                try {
-                    const user = await ensureAuth();
-                    await startMesh(user);
-                } catch (err) {
-                    log("Failed to connect", 'err');
-                    els.btnText.innerText = "RETRY UPLINK";
-                    els.btnLoader.classList.add('hidden');
-                    els.startBtn.classList.remove('scale-[0.98]', 'brightness-90');
-                    els.startBtn.disabled = false;
-                }
-            });
-
-            els.chatForm.onsubmit = (e) => {
-                e.preventDefault();
-                const msg = els.chatInput.value.trim();
-                if (!msg) return;
-
-                connections.forEach(c => {
-                    if (c.open) c.send({ type: 'chat', sender: myName, text: msg });
-                });
-
-                addMessage(myName, msg, 'me');
-                els.chatInput.value = '';
-            };
-        });
-    </script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap');
         
-        body { 
-            font-family: 'Space Grotesk', sans-serif; 
-            background-color: #020617; 
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #0f172a;
             color: #f8fafc;
-            -webkit-font-smoothing: antialiased;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
         }
 
-        .chat-scroll::-webkit-scrollbar { width: 5px; }
-        .chat-scroll::-webkit-scrollbar-track { background: transparent; }
-        .chat-scroll::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
-        
-        @keyframes slideUp { 
-            from { opacity: 0; transform: translateY(12px) scale(0.98); } 
-            to { opacity: 1; transform: translateY(0) scale(1); } 
-        }
-        .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-
-        .glass-input {
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.2s ease;
-        }
-        .glass-input:focus-within {
-            border-color: rgba(99, 102, 241, 0.5);
-            background: rgba(15, 23, 42, 0.8);
-            box-shadow: 0 0 20px rgba(99, 102, 241, 0.1);
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 2rem;
         }
 
-        .mesh-btn {
-            background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
-            box-shadow: 0 10px 25px -5px rgba(67, 56, 202, 0.4);
+        .accent-gradient {
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
         }
-        .mesh-btn:hover {
-            box-shadow: 0 15px 30px -5px rgba(67, 56, 202, 0.6);
-            transform: translateY(-1px);
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .pulse { animation: pulse-ring 1.5s cubic-bezier(0.24, 0, 0.38, 1) infinite; }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.9); opacity: 1; }
+            100% { transform: scale(1.3); opacity: 0; }
+        }
+
+        .message-in { animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
-<body class="h-screen overflow-hidden flex flex-col selection:bg-indigo-500/30">
+<body class="p-4">
 
-    <!-- Landing / Login -->
-    <div id="landing" class="fixed inset-0 z-[100] bg-slate-950 flex items-center justify-center p-6 transition-all duration-500">
-        <div class="max-w-sm w-full">
-            <div class="flex items-center justify-center mb-12">
-                <div class="relative group">
-                    <div class="absolute inset-0 bg-indigo-500 blur-3xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
-                    <div class="w-20 h-20 bg-indigo-600 rounded-[2rem] rotate-12 flex items-center justify-center shadow-2xl relative border border-white/10">
-                        <svg class="w-10 h-10 text-white -rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                    </div>
+    <!-- SETUP SCREEN -->
+    <div id="setup-screen" class="w-full max-w-lg glass p-8 shadow-2xl relative overflow-hidden">
+        <div class="absolute -top-24 -left-24 w-48 h-48 bg-indigo-500/20 blur-3xl rounded-full"></div>
+        
+        <div class="text-center mb-8">
+            <h1 class="text-5xl font-extrabold tracking-tight mb-2">Connect<span class="text-indigo-400">Chat</span></h1>
+            <p class="text-slate-400">Instant P2P. No Copy-Paste required.</p>
+        </div>
+
+        <div id="initial-step" class="space-y-4">
+            <div class="bg-white/5 p-4 rounded-2xl border border-white/10">
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Your Identity</label>
+                <input type="text" id="username-input" placeholder="Enter nickname..." class="w-full bg-transparent text-xl font-bold focus:outline-none placeholder:text-slate-600">
+            </div>
+            <div class="bg-white/5 p-4 rounded-2xl border border-white/10">
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Invite Key (Share this with your friend)</label>
+                <input type="text" id="custom-room-id" placeholder="e.g. secret-room-99" class="w-full bg-transparent text-lg font-bold focus:outline-none placeholder:text-slate-600 uppercase">
+                <p class="text-[10px] text-slate-500 mt-2 italic">If both people use the same key, you'll connect automatically.</p>
+            </div>
+            <button onclick="startConnection()" id="connect-btn" class="w-full py-4 accent-gradient rounded-2xl font-bold text-white shadow-lg hover:brightness-110 transition-all">
+                Connect Now
+            </button>
+        </div>
+
+        <!-- Connection Status Overlay -->
+        <div id="connecting-overlay" class="hidden flex flex-col items-center justify-center py-12 space-y-6">
+            <div class="relative">
+                <div class="absolute inset-0 rounded-full bg-indigo-500 pulse"></div>
+                <div class="relative w-16 h-16 bg-indigo-600 rounded-full flex items-center justify-center">
+                    <svg class="w-8 h-8 text-white animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                 </div>
             </div>
-            
-            <h1 class="text-4xl font-bold text-center mb-2 tracking-tighter">MESH<span class="text-indigo-500">CHAT</span></h1>
-            <p class="text-center text-slate-500 text-sm mb-10 font-medium">Ultra-secure peer-to-peer communication.</p>
-
-            <div class="space-y-4">
-                <div class="glass-input rounded-2xl overflow-hidden">
-                    <input type="text" id="name-input" placeholder="What's your name?" class="w-full bg-transparent p-5 outline-none font-semibold text-slate-100 placeholder:text-slate-600">
-                </div>
-                <div class="glass-input rounded-2xl overflow-hidden">
-                    <input type="text" id="room-input" placeholder="Join room (e.g. general)" class="w-full bg-transparent p-5 outline-none font-mono text-indigo-400 placeholder:text-slate-600">
-                </div>
-                <button id="start-btn" class="mesh-btn w-full text-white font-bold py-5 rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-3">
-                    <span id="btn-text">INITIALIZE LINK</span>
-                    <svg id="btn-loader" class="hidden animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                </button>
+            <div class="text-center">
+                <h3 class="text-xl font-bold text-white" id="status-text">Searching for peer...</h3>
+                <p class="text-slate-400 text-sm mt-1">Room: <span id="status-room" class="text-indigo-400 font-mono"></span></p>
             </div>
+            <button onclick="location.reload()" class="text-xs text-slate-500 hover:text-white underline">Cancel</button>
         </div>
     </div>
 
-    <!-- Main Content -->
-    <div id="chat-section" class="hidden flex-1 flex flex-col md:flex-row overflow-hidden">
-        <!-- Sidebar -->
-        <aside class="w-full md:w-72 bg-[#020617] border-r border-white/5 flex flex-col">
-            <div class="p-6 bg-slate-900/20 backdrop-blur-xl">
-                <div class="flex items-center gap-3 mb-6">
-                    <div class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_15px_#10b981]"></div>
-                    <span class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Secure Node Online</span>
+    <!-- CHAT INTERFACE -->
+    <div id="chat-screen" class="hidden w-full max-w-5xl h-[90vh] glass flex flex-col shadow-2xl relative overflow-hidden">
+        <!-- Header -->
+        <div class="p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
+            <div class="flex items-center gap-4">
+                <div class="relative">
+                    <div id="peer-avatar" class="w-12 h-12 rounded-2xl accent-gradient flex items-center justify-center font-bold text-xl uppercase">?</div>
+                    <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-4 border-slate-900 rounded-full"></div>
                 </div>
-                <div class="text-[9px] font-bold text-slate-600 uppercase mb-2 tracking-widest">Active Frequency</div>
-                <div id="room-display" class="bg-indigo-500/10 p-4 rounded-2xl border border-indigo-500/20 text-indigo-400 font-mono text-sm font-bold">---</div>
-            </div>
-
-            <div class="flex-1 overflow-y-auto p-6 chat-scroll">
-                <div class="text-[9px] font-bold text-slate-600 uppercase mb-4 tracking-widest">Connected Peers</div>
-                <div id="peer-list"></div>
-            </div>
-
-            <!-- Internal Debug Console -->
-            <div class="h-40 bg-black/40 border-t border-white/5 p-4 flex flex-col">
-                <div class="text-[9px] font-bold text-indigo-500/60 uppercase mb-3 tracking-widest">System Logs</div>
-                <div id="debug-log" class="flex-1 text-[10px] font-mono chat-scroll overflow-y-auto leading-relaxed"></div>
-            </div>
-        </aside>
-
-        <!-- Chat Area -->
-        <main class="flex-1 flex flex-col bg-[#020617] relative">
-            <div id="chat-window" class="flex-1 overflow-y-auto p-8 chat-scroll">
-                <!-- Welcome -->
-                <div class="mb-12 p-8 bg-white/5 border border-white/5 rounded-[2.5rem] text-center max-w-lg mx-auto">
-                    <div class="w-14 h-14 bg-indigo-500/10 text-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                <div>
+                    <h2 id="peer-name" class="font-bold text-lg text-white">Friend</h2>
+                    <div class="text-xs text-slate-500 flex items-center gap-1">
+                        <span id="room-label" class="bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded text-[10px] font-bold mr-2 uppercase"></span>
+                        Direct P2P Tunnel
                     </div>
-                    <h3 class="font-bold text-slate-200 text-lg">Encrypted Channel Ready</h3>
-                    <p class="text-xs text-slate-500 mt-2 leading-relaxed">Your messages are routed directly to connected peers using P2P technology.</p>
                 </div>
             </div>
+            <button onclick="location.reload()" class="p-3 hover:bg-white/5 rounded-xl text-slate-400">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+            </button>
+        </div>
 
-            <div class="p-6 bg-slate-950/50 backdrop-blur-2xl border-t border-white/5">
-                <form id="chat-form" class="max-w-4xl mx-auto flex gap-3">
-                    <div class="flex-1 glass-input rounded-2xl overflow-hidden px-2">
-                        <input type="text" id="chat-input" placeholder="Broadcast a message..." class="w-full bg-transparent px-4 py-4 outline-none text-sm font-medium placeholder:text-slate-600">
-                    </div>
-                    <button class="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center hover:bg-indigo-500 transition-all active:scale-90 shadow-lg shadow-indigo-600/20 text-white">
-                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
-                    </button>
-                </form>
-            </div>
-        </main>
+        <!-- Message List -->
+        <div id="messages" class="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar"></div>
+
+        <!-- Input Area -->
+        <div class="p-6 border-t border-white/5 bg-black/10">
+            <form id="chat-form" class="flex items-center gap-4">
+                <label class="cursor-pointer p-3 hover:bg-white/5 rounded-2xl text-slate-400">
+                    <input type="file" id="file-input" class="hidden">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                </label>
+                <input type="text" id="message-input" autocomplete="off" placeholder="Write a message..." class="flex-1 bg-white/5 border border-white/10 rounded-2xl px-6 py-4 focus:outline-none focus:ring-2 ring-indigo-500/50">
+                <button type="submit" class="accent-gradient p-4 rounded-2xl text-white shadow-lg">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                </button>
+            </form>
+        </div>
     </div>
 
+    <script>
+        // --- WebRTC & Signaling Config ---
+        const iceServers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
+        let pc = new RTCPeerConnection(iceServers);
+        let dataChannel = null;
+        let myName = "";
+        let myRoomId = "";
+        let peerName = "Friend";
+        
+        // We use a public websocket relay for the handshake ONLY. 
+        // Once connected, the relay is ignored and communication is pure P2P.
+        let socket;
+
+        async function startConnection() {
+            myName = document.getElementById('username-input').value.trim() || "User-" + Math.floor(Math.random() * 99);
+            myRoomId = document.getElementById('custom-room-id').value.trim().toUpperCase() || "LOBBY";
+
+            document.getElementById('initial-step').classList.add('hidden');
+            document.getElementById('connecting-overlay').classList.remove('hidden');
+            document.getElementById('status-room').innerText = myRoomId;
+
+            // Connect to a public signaling relay
+            socket = new WebSocket('wss://connect.websocket.me/v3/1?api_key=o7S68sV7968sV7968sV7'); // Public demo key
+
+            socket.onopen = () => {
+                // Join the room channel
+                socket.send(JSON.stringify({ type: 'join', room: myRoomId }));
+                
+                // One peer acts as the caller (Host), the other as the answerer.
+                // To decide, we wait a moment or just try to offer immediately.
+                initiateHandshake();
+            };
+
+            socket.onmessage = async (e) => {
+                const msg = JSON.parse(e.data);
+                if (msg.room !== myRoomId || msg.sender === myName) return;
+
+                if (msg.type === 'offer') {
+                    peerName = msg.name;
+                    await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+                    const answer = await pc.createAnswer();
+                    await pc.setLocalDescription(answer);
+                    sendSignal({ type: 'answer', sdp: pc.localDescription, name: myName });
+                } else if (msg.type === 'answer') {
+                    peerName = msg.name;
+                    await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+                } else if (msg.type === 'candidate') {
+                    try { await pc.addIceCandidate(new RTCIceCandidate(msg.candidate)); } catch(e) {}
+                }
+            };
+        }
+
+        function sendSignal(data) {
+            data.room = myRoomId;
+            data.sender = myName;
+            socket.send(JSON.stringify(data));
+        }
+
+        async function initiateHandshake() {
+            // Setup Data Channel
+            dataChannel = pc.createDataChannel('chat');
+            setupDataHandlers(dataChannel);
+
+            // Setup ICE candidates
+            pc.onicecandidate = (e) => {
+                if (e.candidate) sendSignal({ type: 'candidate', candidate: e.candidate });
+            };
+
+            // Handling incoming channels (for the person who didn't create the offer)
+            pc.ondatachannel = (e) => {
+                dataChannel = e.channel;
+                setupDataHandlers(dataChannel);
+            };
+
+            // Generate Offer
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            sendSignal({ type: 'offer', sdp: pc.localDescription, name: myName });
+        }
+
+        function setupDataHandlers(channel) {
+            channel.onopen = () => {
+                document.getElementById('setup-screen').classList.add('hidden');
+                document.getElementById('chat-screen').classList.remove('hidden');
+                document.getElementById('peer-name').innerText = peerName;
+                document.getElementById('peer-avatar').innerText = peerName[0];
+                document.getElementById('room-label').innerText = myRoomId;
+                appendStatus(`Direct connection with ${peerName} secured.`);
+                // We can close the signaling socket now, we are P2P!
+                socket.close();
+            };
+
+            channel.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                if (data.type === 'text') appendMessage('peer', data.content);
+                if (data.type === 'file') handleFileDownload(data);
+            };
+        }
+
+        // --- UI Interactions ---
+        const chatForm = document.getElementById('chat-form');
+        const msgInput = document.getElementById('message-input');
+        const fileInput = document.getElementById('file-input');
+        const messagesDiv = document.getElementById('messages');
+
+        chatForm.onsubmit = (e) => {
+            e.preventDefault();
+            const text = msgInput.value.trim();
+            if (text && dataChannel?.readyState === 'open') {
+                dataChannel.send(JSON.stringify({ type: 'text', content: text }));
+                appendMessage('me', text);
+                msgInput.value = '';
+            }
+        };
+
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                dataChannel.send(JSON.stringify({ type: 'file', name: file.name, data: reader.result }));
+                appendStatus(`Sent: ${file.name}`);
+            };
+            reader.readAsDataURL(file);
+        };
+
+        function handleFileDownload(file) {
+            appendStatus(`${peerName} sent a file.`);
+            const link = document.createElement('a');
+            link.href = file.data; link.download = file.name;
+            link.className = "block mt-2 p-3 bg-white/10 rounded-xl text-xs text-indigo-400 font-bold border border-indigo-500/20";
+            link.innerText = `⬇ Download ${file.name}`;
+            messagesDiv.appendChild(link);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function appendMessage(sender, text) {
+            const div = document.createElement('div');
+            div.className = `flex w-full ${sender === 'me' ? 'justify-end' : 'justify-start'} message-in`;
+            div.innerHTML = `
+                <div class="max-w-[80%]">
+                    <div class="flex items-center gap-2 mb-1 px-2 ${sender === 'me' ? 'flex-row-reverse' : ''}">
+                        <span class="text-[9px] font-bold uppercase text-slate-500 tracking-widest">${sender === 'me' ? myName : peerName}</span>
+                    </div>
+                    <div class="px-5 py-3 rounded-2xl shadow-xl ${
+                        sender === 'me' ? 'accent-gradient text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none border border-white/5'
+                    }">
+                        <p class="text-sm">${escapeHtml(text)}</p>
+                    </div>
+                </div>
+            `;
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function appendStatus(txt) {
+            const div = document.createElement('div');
+            div.className = "text-center text-[10px] uppercase text-slate-600 font-bold py-2 tracking-widest";
+            div.innerText = txt;
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+    </script>
 </body>
 </html>
