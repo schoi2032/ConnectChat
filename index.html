@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ConnectChat | Pro</title>
+    <title>ConnectChatPro | Fast and Efficient</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -11,18 +11,14 @@
         
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f0f7ff;
+            background-color: #f8fafc;
             margin: 0;
             padding: 0;
             overflow: hidden;
         }
 
-        .chat-container {
-            height: calc(100vh - 140px);
-        }
-
         .message-bubble {
-            max-width: 80%;
+            max-width: 85%;
             word-wrap: break-word;
         }
 
@@ -37,7 +33,6 @@
             border-radius: 10px;
         }
 
-        /* Animations */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -50,27 +45,28 @@
 <body class="flex items-center justify-center h-screen w-screen bg-blue-50">
 
     <!-- Auth / Login Screen -->
-    <div id="auth-screen" class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 animate-fade-in m-4">
+    <div id="auth-screen" class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 animate-fade-in m-4 z-50">
         <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4 shadow-lg shadow-blue-200">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-blue-600 rounded-3xl mb-4 shadow-xl shadow-blue-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
             </div>
-            <h1 class="text-3xl font-bold text-gray-800">ConnectChat</h1>
-            <p class="text-gray-500 mt-2">Enter your details to start chatting</p>
+            <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">ConnectChat</h1>
+            <p class="text-gray-500 mt-2">P2P Real-time Group Chat</p>
         </div>
 
-        <div class="space-y-4">
+        <div class="space-y-5">
             <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-1">Display Name</label>
-                <input type="text" id="username" placeholder="Your Name" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all">
+                <label class="block text-sm font-bold text-gray-700 mb-1.5 ml-1">Your Name</label>
+                <input type="text" id="username" placeholder="Alice" class="w-full px-5 py-4 rounded-2xl border border-gray-200 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all bg-gray-50">
             </div>
             <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-1">Custom ID</label>
-                <input type="text" id="peer-id" placeholder="Choose a unique ID" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all">
+                <label class="block text-sm font-bold text-gray-700 mb-1.5 ml-1">Your Unique ID</label>
+                <input type="text" id="peer-id" placeholder="Choose a rare ID (e.g. alice_99_chat)" class="w-full px-5 py-4 rounded-2xl border border-gray-200 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all bg-gray-50">
+                <p class="text-[10px] text-gray-400 mt-2 ml-1 italic">Make it unique so others don't accidentally use it.</p>
             </div>
-            <button onclick="initSession()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all transform active:scale-95 shadow-md shadow-blue-100 mt-4">
+            <button onclick="initSession()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-all transform active:scale-[0.98] shadow-lg shadow-blue-200 mt-4">
                 Initialize Session
             </button>
         </div>
@@ -79,54 +75,72 @@
     <!-- Main Chat Screen -->
     <div id="chat-screen" class="hidden w-screen h-screen bg-white flex flex-col overflow-hidden animate-fade-in">
         <!-- Header -->
-        <div class="bg-blue-600 p-4 md:px-8 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg z-10">
+        <div class="bg-blue-600 p-4 md:px-8 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl z-20">
             <div class="flex items-center gap-4">
-                <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                    <span id="user-initial" class="text-lg font-bold">U</span>
+                <div class="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center border border-white/30 backdrop-blur-sm">
+                    <span id="user-initial" class="text-xl font-bold">U</span>
                 </div>
                 <div>
-                    <h2 id="display-name" class="font-bold text-base leading-tight">...</h2>
-                    <p class="text-blue-100 text-[10px] flex items-center gap-1 uppercase tracking-wider">
-                        <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                        ID: <span id="my-id-display" class="font-mono bg-blue-700 px-1 rounded">...</span>
+                    <h2 id="display-name" class="font-bold text-lg leading-tight">...</h2>
+                    <p class="text-blue-100 text-[10px] flex items-center gap-1.5 uppercase tracking-widest font-semibold">
+                        <span id="status-indicator" class="w-2 h-2 bg-yellow-400 rounded-full"></span>
+                        <span id="status-text">Connecting...</span>
+                        <span class="mx-1 opacity-40">|</span>
+                        ID: <span id="my-id-display" class="font-mono bg-blue-700 px-1.5 py-0.5 rounded text-white">...</span>
                     </p>
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                <input type="text" id="target-id" placeholder="Enter friend's ID" class="bg-blue-700/50 border border-blue-400/30 rounded-lg px-3 py-2 text-sm placeholder-blue-200 outline-none focus:bg-blue-700 transition-all w-full md:w-48">
-                <button onclick="connectToPeer()" class="bg-white text-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-50 transition-all flex items-center gap-2 whitespace-nowrap">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
+                <input type="text" id="target-id" placeholder="Enter friend's ID" class="bg-blue-700/50 border border-blue-400/30 rounded-xl px-4 py-2.5 text-sm placeholder-blue-200 outline-none focus:bg-blue-700 transition-all w-full md:w-56 text-white">
+                <button onclick="connectToPeer()" class="bg-white text-blue-600 px-5 py-2.5 rounded-xl text-sm font-black hover:bg-blue-50 transition-all flex items-center gap-2 whitespace-nowrap shadow-md active:scale-95">
                     Connect
                 </button>
             </div>
         </div>
 
-        <!-- Messages Area -->
-        <div id="messages-container" class="flex-grow p-4 md:p-8 overflow-y-auto custom-scrollbar space-y-4 bg-slate-50">
-            <div class="max-w-3xl mx-auto text-center py-20">
-                <div class="bg-blue-100 text-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
+        <div class="flex flex-grow overflow-hidden">
+            <!-- Sidebar: Live People -->
+            <div class="hidden md:flex flex-col w-72 bg-gray-50 border-r border-gray-200 overflow-y-auto custom-scrollbar">
+                <div class="p-5 border-b border-gray-200 bg-white sticky top-0 z-10">
+                    <h3 class="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center justify-between">
+                        Live Contacts
+                        <span id="contact-count" class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full text-[10px]">0</span>
+                    </h3>
                 </div>
-                <h3 class="text-xl font-bold text-gray-800">Your secure P2P session is active</h3>
-                <p class="text-gray-500 text-sm mt-2">Connect with others by entering their unique ID above. Your group will automatically expand as more people join!</p>
+                <div id="contacts-list" class="p-3 space-y-2">
+                    <p class="text-xs text-gray-400 text-center py-10 italic">Your list is empty.<br>Connect to an ID to start.</p>
+                </div>
             </div>
-        </div>
 
-        <!-- Input Area -->
-        <div class="p-4 bg-white border-t border-gray-100">
-            <div class="max-w-4xl mx-auto">
-                <form id="chat-form" onsubmit="sendMessage(event)" class="flex gap-2">
-                    <input type="text" id="message-input" placeholder="Type a message..." class="flex-grow px-4 py-4 bg-gray-100 rounded-2xl border-none focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-inner" autocomplete="off">
-                    <button type="submit" class="bg-blue-600 text-white p-4 rounded-2xl hover:bg-blue-700 transition-all transform active:scale-90 shadow-lg shadow-blue-200">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                        </svg>
-                    </button>
-                </form>
+            <!-- Chat Area -->
+            <div class="flex flex-col flex-grow bg-white relative">
+                <!-- Messages Area -->
+                <div id="messages-container" class="flex-grow p-4 md:p-8 overflow-y-auto custom-scrollbar space-y-6">
+                    <!-- Welcome visual -->
+                    <div id="welcome-message" class="max-w-md mx-auto text-center py-20 animate-fade-in">
+                        <div class="bg-blue-50 text-blue-500 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-2xl font-black text-gray-900">ConnectChat Live</h3>
+                        <p class="text-sm text-gray-500 mt-3 leading-relaxed">Type a friend's ID above to start. When you connect to someone, you'll automatically join everyone they are chatting with!</p>
+                    </div>
+                </div>
+
+                <!-- Input Area -->
+                <div class="p-4 md:p-6 bg-white border-t border-gray-100">
+                    <div class="max-w-4xl mx-auto">
+                        <form id="chat-form" onsubmit="sendMessage(event)" class="flex gap-3">
+                            <input type="text" id="message-input" placeholder="Say something..." class="flex-grow px-6 py-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 outline-none transition-all text-sm md:text-base" autocomplete="off">
+                            <button type="submit" class="bg-blue-600 text-white px-6 rounded-2xl hover:bg-blue-700 transition-all transform active:scale-90 shadow-xl shadow-blue-200 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -137,16 +151,22 @@
     <script>
         let peer;
         let connections = {}; 
+        let peerNames = {}; 
         let userData = { name: '', id: '' };
         let heartbeatInterval;
+        let serverCheckInterval;
 
         const authScreen = document.getElementById('auth-screen');
         const chatScreen = document.getElementById('chat-screen');
         const messagesContainer = document.getElementById('messages-container');
+        const contactsList = document.getElementById('contacts-list');
+        const contactCountLabel = document.getElementById('contact-count');
         const notifSound = document.getElementById('notif-sound');
+        const statusIndicator = document.getElementById('status-indicator');
+        const statusText = document.getElementById('status-text');
 
         /**
-         * Initialize PeerJS Session with Reliable STUN Servers
+         * Robust Initialization
          */
         function initSession() {
             const name = document.getElementById('username').value.trim();
@@ -160,18 +180,26 @@
             userData.name = name;
             userData.id = id;
 
-            // Initialize PeerJS with public STUN servers for better connectivity
-            peer = new Peer(id, {
+            createPeer();
+        }
+
+        function createPeer() {
+            // Detailed STUN configuration for traversing NATs
+            peer = new Peer(userData.id, {
+                debug: 1,
                 config: {
                     'iceServers': [
                         { url: 'stun:stun.l.google.com:19302' },
                         { url: 'stun:stun1.l.google.com:19302' },
-                        { url: 'stun:stun2.l.google.com:19302' }
+                        { url: 'stun:stun2.l.google.com:19302' },
+                        { url: 'stun:stun3.l.google.com:19302' },
+                        { url: 'stun:stun4.l.google.com:19302' }
                     ]
                 }
             });
 
             peer.on('open', (id) => {
+                updateStatus(true);
                 document.getElementById('display-name').innerText = userData.name;
                 document.getElementById('my-id-display').innerText = id;
                 document.getElementById('user-initial').innerText = userData.name.charAt(0).toUpperCase();
@@ -179,8 +207,7 @@
                 authScreen.classList.add('hidden');
                 chatScreen.classList.remove('hidden');
 
-                // Start Heartbeat to prevent expiration
-                startHeartbeat();
+                startMaintenanceLoops();
             });
 
             peer.on('connection', (conn) => {
@@ -188,63 +215,76 @@
             });
 
             peer.on('error', (err) => {
-                console.error('Peer Error:', err.type);
+                console.error('PeerJS Error:', err.type);
                 if (err.type === 'unavailable-id') {
-                    alert('This ID is already taken. Please refresh and choose another one.');
-                } else if (err.type === 'peer-unavailable') {
-                    alert('The ID you tried to connect to does not exist or is offline.');
+                    alert('ID taken! Refresh and try another.');
                 }
+                updateStatus(false);
             });
 
             peer.on('disconnected', () => {
-                // Reconnect if the server drops us
+                updateStatus(false);
+                console.log('Server connection lost. Attempting reconnect...');
                 peer.reconnect();
+            });
+
+            peer.on('close', () => {
+                updateStatus(false);
+                console.log('Peer destroyed.');
             });
         }
 
+        function updateStatus(online) {
+            if (online) {
+                statusIndicator.className = "w-2 h-2 bg-green-400 rounded-full animate-pulse";
+                statusText.innerText = "Online";
+            } else {
+                statusIndicator.className = "w-2 h-2 bg-red-500 rounded-full";
+                statusText.innerText = "Disconnected";
+            }
+        }
+
         /**
-         * Start Heartbeat to keep connections alive
+         * Maintenance Loops: Heartbeat & Server Check
          */
-        function startHeartbeat() {
+        function startMaintenanceLoops() {
+            // 1. Keep P2P tunnels alive
             if (heartbeatInterval) clearInterval(heartbeatInterval);
             heartbeatInterval = setInterval(() => {
                 Object.values(connections).forEach(conn => {
                     if (conn.open) {
-                        conn.send({ type: 'ping' });
+                        conn.send({ type: 'heartbeat' });
                     }
                 });
-            }, 5000); // Send ping every 5 seconds
+            }, 3000); 
+
+            // 2. Ensure we are still connected to discovery server
+            if (serverCheckInterval) clearInterval(serverCheckInterval);
+            serverCheckInterval = setInterval(() => {
+                if (peer.disconnected && !peer.destroyed) {
+                    peer.reconnect();
+                }
+            }, 5000);
         }
 
-        /**
-         * Connect to a specific Peer ID
-         */
         function connectToPeer() {
             const targetId = document.getElementById('target-id').value.trim();
-            
-            if (!targetId) return;
-            if (targetId === userData.id) return;
-            if (connections[targetId]) {
-                alert("Already connected!");
-                return;
-            }
+            if (!targetId || targetId === userData.id || connections[targetId]) return;
 
-            const conn = peer.connect(targetId, {
-                reliable: true
+            const conn = peer.connect(targetId, { 
+                reliable: true,
+                metadata: { name: userData.name } 
             });
             setupConnection(conn);
             document.getElementById('target-id').value = '';
         }
 
-        /**
-         * Handle connection events and data flow
-         */
         function setupConnection(conn) {
             conn.on('open', () => {
                 if (!connections[conn.peer]) {
                     connections[conn.peer] = conn;
                     
-                    // Share current peer list to expand the group automatically
+                    // Initial Handshake
                     const peerIds = Object.keys(connections).filter(id => id !== conn.peer);
                     conn.send({
                         type: 'system',
@@ -253,7 +293,7 @@
                         existingPeers: peerIds
                     });
 
-                    addSystemMessage(`${conn.peer} joined.`);
+                    document.getElementById('welcome-message').classList.add('hidden');
                 }
             });
 
@@ -262,47 +302,77 @@
                     renderMessage(data.sender, data.text, false);
                     playSound();
                 } else if (data.type === 'system') {
-                    handleSystemMessage(data, conn);
-                } else if (data.type === 'ping') {
-                    // Just a heartbeat, do nothing
+                    if (data.action === 'handshake') {
+                        peerNames[conn.peer] = data.name;
+                        updateContactsUI();
+                        
+                        // Bridge logic: Auto-connect to their friends
+                        if (data.existingPeers) {
+                            data.existingPeers.forEach(pId => {
+                                if (pId !== userData.id && !connections[pId]) {
+                                    connectToPeerExplicit(pId);
+                                }
+                            });
+                        }
+                    }
+                } else if (data.type === 'heartbeat') {
+                    // Do nothing, just keeps the tunnel open
                 }
             });
 
-            conn.on('close', () => {
-                addSystemMessage(`${conn.peer} left.`);
-                delete connections[conn.peer];
-            });
-            
-            conn.on('error', (err) => {
-                console.error("Connection error:", err);
-                delete connections[conn.peer];
-            });
+            const onEnd = () => handlePeerDisconnect(conn.peer);
+            conn.on('close', onEnd);
+            conn.on('error', onEnd);
         }
 
-        /**
-         * Automatic Group Expansion Logic
-         */
-        function handleSystemMessage(data, conn) {
-            if (data.action === 'handshake') {
-                if (data.existingPeers && data.existingPeers.length > 0) {
-                    data.existingPeers.forEach(peerId => {
-                        if (peerId !== userData.id && !connections[peerId]) {
-                            const newConn = peer.connect(peerId, { reliable: true });
-                            setupConnection(newConn);
-                        }
-                    });
-                }
+        function connectToPeerExplicit(targetId) {
+            if (connections[targetId]) return;
+            const conn = peer.connect(targetId, { reliable: true });
+            setupConnection(conn);
+        }
+
+        function handlePeerDisconnect(peerId) {
+            if (connections[peerId]) {
+                const name = peerNames[peerId] || peerId;
+                addSystemMessage(`${name} left.`);
+                delete connections[peerId];
+                delete peerNames[peerId];
+                updateContactsUI();
             }
         }
 
-        /**
-         * Send message to all connected peers
-         */
+        function updateContactsUI() {
+            const keys = Object.keys(connections);
+            const count = keys.length;
+            contactCountLabel.innerText = count;
+
+            if (count === 0) {
+                contactsList.innerHTML = `<p class="text-xs text-gray-400 text-center py-10 italic">No one connected yet</p>`;
+                return;
+            }
+
+            contactsList.innerHTML = '';
+            keys.forEach(id => {
+                const name = peerNames[id] || 'Guest';
+                const contactDiv = document.createElement('div');
+                contactDiv.className = "flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm animate-fade-in";
+                contactDiv.innerHTML = `
+                    <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-sm">
+                        ${name.charAt(0).toUpperCase()}
+                    </div>
+                    <div class="overflow-hidden">
+                        <p class="text-sm font-bold text-gray-900 truncate">${name}</p>
+                        <p class="text-[10px] font-mono text-gray-400 truncate tracking-tighter">${id}</p>
+                    </div>
+                `;
+                contactsList.appendChild(contactDiv);
+            });
+        }
+
         function sendMessage(e) {
             e.preventDefault();
             const input = document.getElementById('message-input');
             const text = input.value.trim();
-
             if (!text) return;
 
             const messageObj = {
@@ -312,29 +382,24 @@
             };
 
             Object.values(connections).forEach(conn => {
-                if (conn.open) {
-                    conn.send(messageObj);
-                }
+                if (conn.open) conn.send(messageObj);
             });
 
             renderMessage('You', text, true);
             input.value = '';
         }
 
-        /**
-         * UI Rendering Helpers
-         */
         function renderMessage(sender, text, isMe) {
             const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const msgDiv = document.createElement('div');
-            msgDiv.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} space-y-1 animate-fade-in max-w-4xl mx-auto w-full px-4`;
+            msgDiv.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} space-y-1.5 animate-fade-in w-full px-2`;
             
             msgDiv.innerHTML = `
-                <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-2">${sender}</span>
-                <div class="message-bubble px-5 py-3 rounded-2xl shadow-sm ${isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'}">
-                    <p class="text-sm md:text-base leading-relaxed">${escapeHTML(text)}</p>
+                <span class="text-[10px] font-black uppercase tracking-[0.1em] text-gray-400 px-3">${sender}</span>
+                <div class="message-bubble px-5 py-3.5 rounded-3xl shadow-sm ${isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-gray-100 text-gray-800 rounded-tl-none'}">
+                    <p class="text-sm md:text-[15px] leading-relaxed font-medium">${escapeHTML(text)}</p>
                 </div>
-                <span class="text-[9px] text-gray-400 px-2 italic">${time}</span>
+                <span class="text-[9px] text-gray-400 px-3 font-semibold opacity-60">${time}</span>
             `;
 
             messagesContainer.appendChild(msgDiv);
@@ -343,8 +408,8 @@
 
         function addSystemMessage(text) {
             const msgDiv = document.createElement('div');
-            msgDiv.className = "flex justify-center my-4 w-full";
-            msgDiv.innerHTML = `<span class="bg-blue-50 text-blue-400 text-[9px] uppercase tracking-[0.2em] font-black px-4 py-1.5 rounded-full border border-blue-100">${text}</span>`;
+            msgDiv.className = "flex justify-center my-6 w-full";
+            msgDiv.innerHTML = `<span class="bg-gray-100 text-gray-500 text-[10px] uppercase tracking-[0.15em] font-black px-5 py-2 rounded-full border border-gray-200">${text}</span>`;
             messagesContainer.appendChild(msgDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
