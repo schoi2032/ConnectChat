@@ -74,7 +74,7 @@
             <div>
                 <label class="block text-sm font-bold text-blue-900 mb-1.5 ml-1">Room Name</label>
                 <input type="text" id="room-name" placeholder="e.g. gamers-club" class="w-full px-5 py-4 rounded-2xl border-2 border-blue-50 focus:border-blue-500 outline-none transition-all bg-blue-50/50 text-blue-900 placeholder-blue-300 font-mono">
-                <p class="text-[10px] text-blue-400 mt-2 ml-1">Enter the same Room Name as your friends to join them.</p>
+                <p class="text-[10px] text-blue-400 mt-2 ml-1">Enter a shared room name with friends.</p>
             </div>
             <button onclick="initSession()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-all transform active:scale-[0.98] shadow-lg shadow-blue-200 mt-4">
                 Join Room
@@ -85,28 +85,39 @@
     <!-- Main Chat Screen -->
     <div id="chat-screen" class="hidden w-screen h-screen bg-white flex flex-col overflow-hidden animate-fade-in">
         <!-- Header -->
-        <div class="bg-blue-600 p-4 md:px-8 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg z-20">
+        <div class="bg-blue-600 p-4 md:px-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg z-20">
             <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-blue-500/50 rounded-2xl flex items-center justify-center border border-white/20 backdrop-blur-sm">
-                    <span id="user-initial" class="text-xl font-bold">?</span>
+                <div class="w-10 h-10 bg-blue-500/50 rounded-xl flex items-center justify-center border border-white/20 backdrop-blur-sm">
+                    <span id="user-initial" class="text-lg font-bold">?</span>
                 </div>
                 <div>
-                    <h2 id="display-name" class="font-bold text-lg leading-tight">...</h2>
-                    <p class="text-blue-100 text-[10px] flex items-center gap-1.5 uppercase tracking-widest font-bold">
+                    <h2 id="display-name" class="font-bold text-base leading-tight">...</h2>
+                    <p class="text-blue-100 text-[9px] flex items-center gap-1.5 uppercase tracking-widest font-bold">
                         <span id="status-indicator" class="w-2 h-2 bg-yellow-400 rounded-full status-pulse"></span>
                         <span id="status-text">Booting...</span>
                         <span class="mx-1 opacity-40">|</span>
-                        ROOM: <span id="my-id-display" class="font-mono bg-blue-800/50 px-2 py-0.5 rounded">...</span>
+                        ROOM: <span id="my-room-display" class="font-mono bg-blue-800/50 px-2 py-0.5 rounded">...</span>
                     </p>
                 </div>
             </div>
-            <div class="flex items-center gap-3">
-                <div class="hidden md:block text-right">
-                    <p class="text-[10px] text-blue-200 font-bold uppercase tracking-tighter">Invite others using:</p>
-                    <p id="invite-id" class="text-sm font-mono text-white select-all cursor-pointer hover:text-blue-200 transition-colors">...</p>
+            
+            <!-- Connection Control -->
+            <div class="flex items-center gap-2">
+                <div class="relative flex-grow">
+                    <input type="text" id="target-peer-id" placeholder="Paste friend's Internal ID..." class="w-full md:w-64 bg-blue-700/50 border border-blue-400/30 rounded-xl px-4 py-2 text-xs placeholder-blue-300 outline-none focus:bg-blue-800 transition-all text-white font-mono">
                 </div>
-                <button onclick="copyInvite()" class="bg-blue-500/50 p-2.5 rounded-xl hover:bg-blue-500 transition-all border border-white/20">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button onclick="connectToPeer()" class="bg-white text-blue-600 px-4 py-2 rounded-xl text-xs font-black hover:bg-blue-50 transition-all shadow-md active:scale-95 whitespace-nowrap">
+                    Connect
+                </button>
+            </div>
+
+            <div class="flex items-center gap-2 border-l border-blue-500 pl-4">
+                <div class="text-right">
+                    <p class="text-[8px] text-blue-200 font-bold uppercase">My Internal ID:</p>
+                    <p id="my-internal-id" class="text-[10px] font-mono text-white select-all cursor-pointer bg-blue-800/30 px-2 py-1 rounded">...</p>
+                </div>
+                <button onclick="copyMyId()" class="bg-blue-500/50 p-2 rounded-lg hover:bg-blue-500 transition-all border border-white/10">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                     </svg>
                 </button>
@@ -115,42 +126,42 @@
 
         <div class="flex flex-grow overflow-hidden bg-blue-50/30">
             <!-- Sidebar -->
-            <div class="hidden md:flex flex-col w-72 bg-white border-r border-blue-100 overflow-y-auto custom-scrollbar">
-                <div class="p-6 border-b border-blue-50 bg-white/80 backdrop-blur-md sticky top-0 z-10">
-                    <h3 class="text-[11px] font-black text-blue-400 uppercase tracking-[0.2em] flex items-center justify-between">
-                        Who's in Room
-                        <span id="contact-count" class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full text-[10px]">1</span>
+            <div class="hidden md:flex flex-col w-64 bg-white border-r border-blue-100 overflow-y-auto custom-scrollbar">
+                <div class="p-4 border-b border-blue-50 bg-white/80 backdrop-blur-md sticky top-0 z-10">
+                    <h3 class="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] flex items-center justify-between">
+                        Connected
+                        <span id="contact-count" class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full text-[9px]">1</span>
                     </h3>
                 </div>
-                <div id="contacts-list" class="p-3 space-y-2">
-                    <div class="flex items-center gap-4 p-4 bg-blue-50/50 rounded-2xl border border-blue-200 mx-2 mb-2">
-                        <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-sm">You</div>
-                        <p id="self-name-list" class="text-sm font-bold text-blue-900 truncate">...</p>
+                <div id="contacts-list" class="p-2 space-y-1">
+                    <div class="flex items-center gap-3 p-3 bg-blue-50 rounded-xl border border-blue-200">
+                        <div class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-xs">You</div>
+                        <p id="self-name-list" class="text-xs font-bold text-blue-900 truncate">...</p>
                     </div>
                 </div>
             </div>
 
             <!-- Chat Area -->
             <div class="flex flex-col flex-grow bg-white relative">
-                <div id="messages-container" class="flex-grow p-4 md:p-8 overflow-y-auto custom-scrollbar space-y-6">
+                <div id="messages-container" class="flex-grow p-4 md:p-6 overflow-y-auto custom-scrollbar space-y-4">
                     <div id="welcome-message" class="max-w-md mx-auto text-center py-20 animate-fade-in">
-                        <div class="bg-blue-50 text-blue-600 w-24 h-24 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-inner">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div class="bg-blue-50 text-blue-600 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-inner">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                             </svg>
                         </div>
-                        <h3 class="text-2xl font-black text-blue-900">Room Connected</h3>
-                        <p class="text-sm text-blue-500 mt-4 leading-relaxed px-6">Invite your friends to the same room name. Once one person connects, the group "mesh" will automatically link everyone together.</p>
+                        <h3 class="text-xl font-black text-blue-900">Room Ready</h3>
+                        <p class="text-xs text-blue-500 mt-2 px-6">1. Copy your <b>Internal ID</b>.<br>2. Send it to a friend.<br>3. They paste it in the box above and click <b>Connect</b>.</p>
                     </div>
                 </div>
 
                 <!-- Input Area -->
-                <div class="p-4 md:p-6 bg-white border-t border-blue-50">
-                    <div class="max-w-4xl mx-auto relative">
-                        <form id="chat-form" onsubmit="sendMessage(event)" class="flex gap-3">
-                            <input type="text" id="message-input" placeholder="Say something to the room..." class="flex-grow px-6 py-4 bg-blue-50/50 rounded-2xl border-2 border-transparent focus:border-blue-600 focus:bg-white outline-none transition-all text-sm md:text-base text-blue-900">
-                            <button type="submit" class="bg-blue-600 text-white px-8 rounded-2xl hover:bg-blue-700 transition-all transform active:scale-90 shadow-xl shadow-blue-200">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div class="p-4 bg-white border-t border-blue-50">
+                    <div class="max-w-4xl mx-auto">
+                        <form id="chat-form" onsubmit="sendMessage(event)" class="flex gap-2">
+                            <input type="text" id="message-input" placeholder="Type a message..." class="flex-grow px-5 py-3 bg-blue-50/50 rounded-xl border border-transparent focus:border-blue-600 focus:bg-white outline-none transition-all text-sm text-blue-900" autocomplete="off">
+                            <button type="submit" class="bg-blue-600 text-white px-6 rounded-xl hover:bg-blue-700 transition-all transform active:scale-95 shadow-md">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                                 </svg>
                             </button>
@@ -168,11 +179,13 @@
         let connections = {}; 
         let peerNames = {}; 
         let userData = { name: '', room: '', internalId: '' };
+        let hasMessages = false;
 
         const authScreen = document.getElementById('auth-screen');
         const chatScreen = document.getElementById('chat-screen');
         const messagesContainer = document.getElementById('messages-container');
         const contactsList = document.getElementById('contacts-list');
+        const welcomeMessage = document.getElementById('welcome-message');
 
         function initSession() {
             userData.name = document.getElementById('username').value.trim();
@@ -184,10 +197,8 @@
             }
 
             userData.room = rawRoom;
-            // Create a unique ID that starts with the room name so others can find us
-            // Format: room_name_random
-            userData.internalId = `room_${rawRoom}_${Math.random().toString(36).substr(2, 9)}`;
-
+            // PeerJS ID must be alphanumeric/dashes/underscores
+            userData.internalId = `cc-${userData.room}-${Math.random().toString(36).substr(2, 6)}`;
             createPeer();
         }
 
@@ -198,175 +209,162 @@
                     iceServers: [
                         { urls: 'stun:stun.l.google.com:19302' },
                         { urls: 'stun:stun1.l.google.com:19302' },
-                        { urls: 'stun:stun2.l.google.com:19302' }
+                        { urls: 'stun:stun2.l.google.com:19302' },
+                        { urls: 'stun:stun3.l.google.com:19302' }
                     ]
                 }
             });
 
             peer.on('open', (id) => {
-                updateUIState(true);
+                updateUIStatus(true);
                 authScreen.classList.add('hidden');
                 chatScreen.classList.remove('hidden');
                 
                 document.getElementById('display-name').innerText = userData.name;
                 document.getElementById('self-name-list').innerText = userData.name;
-                document.getElementById('my-id-display').innerText = userData.room;
-                document.getElementById('invite-id').innerText = userData.room;
+                document.getElementById('my-room-display').innerText = userData.room;
+                document.getElementById('my-internal-id').innerText = id;
                 document.getElementById('user-initial').innerText = userData.name.charAt(0).toUpperCase();
                 
-                // Automatic Discovery: Join the room "mesh"
-                discoverRoomPeers();
-                startKeepAlive();
+                startHeartbeat();
             });
 
-            peer.on('connection', (conn) => {
-                handleConnection(conn);
-            });
+            peer.on('connection', handleConnection);
 
             peer.on('error', (err) => {
                 console.error("Peer Error:", err.type);
+                if (err.type === 'peer-unavailable') {
+                    alert("Could not find that person. Make sure they are online and their ID is correct!");
+                }
             });
 
             peer.on('disconnected', () => {
-                updateUIState(false);
+                updateUIStatus(false);
                 peer.reconnect();
             });
         }
 
-        // Logic to find others in the same "room"
-        // Note: In a pure P2P app without a signaling server, we usually "brute force" 
-        // common IDs. But since we want to "Join Room", we wait for connections OR 
-        // you can manually type a friend's ID if you know it.
-        // For a more advanced "Discovery", one would use a discovery server.
-        // Here, we provide an "Invite" mechanism.
-        function discoverRoomPeers() {
-            // In this version, users share the "Room ID" (the name).
-            // When someone connects via "Connect", the mesh will spread their presence.
-        }
-
-        function copyInvite() {
-            const roomName = userData.room;
-            const text = roomName;
+        function copyMyId() {
+            const id = userData.internalId;
             const dummy = document.createElement("textarea");
             document.body.appendChild(dummy);
-            dummy.value = text;
+            dummy.value = id;
             dummy.select();
             document.execCommand("copy");
             document.body.removeChild(dummy);
-            alert("Room name '" + roomName + "' copied! Give this to friends.");
+            
+            const btn = event.currentTarget;
+            const originalColor = btn.style.backgroundColor;
+            btn.style.backgroundColor = "#10b981"; // Green
+            setTimeout(() => btn.style.backgroundColor = originalColor, 1000);
         }
 
-        function startKeepAlive() {
-            setInterval(() => {
-                if (peer && peer.disconnected && !peer.destroyed) peer.reconnect();
-                Object.values(connections).forEach(conn => {
-                    if (conn.open) conn.send({ type: 'hb' });
-                });
-            }, 3000);
-        }
-
-        function updateUIState(online) {
+        function updateUIStatus(online) {
             const indicator = document.getElementById('status-indicator');
             const statusTxt = document.getElementById('status-text');
             if (online) {
                 indicator.className = "w-2 h-2 bg-green-400 rounded-full shadow-[0_0_8px_rgba(74,222,128,0.6)]";
-                statusTxt.innerText = "Room Active";
+                statusTxt.innerText = "Network Active";
             } else {
                 indicator.className = "w-2 h-2 bg-red-400 rounded-full status-pulse";
-                statusTxt.innerText = "Reconnecting...";
+                statusTxt.innerText = "Connecting...";
             }
         }
 
-        // This is still needed to bridge the first person
         function connectToPeer() {
-            const targetRoomId = document.getElementById('target-id').value.trim();
-            if (!targetRoomId) return;
+            const targetId = document.getElementById('target-peer-id').value.trim();
+            if (!targetId || targetId === userData.internalId || connections[targetId]) return;
             
-            // To connect to someone in a room, you need their specific internal ID.
-            // Since this is true P2P, users should share their specific ID (the long one)
-            // Or use a signaling server (which we are avoiding for simplicity).
-            // Let's make the "Friend's ID" clear.
-            
-            const conn = peer.connect(targetRoomId, { reliable: true });
+            const conn = peer.connect(targetId, { reliable: true });
             handleConnection(conn);
-            document.getElementById('target-id').value = '';
+            document.getElementById('target-peer-id').value = '';
         }
 
         function handleConnection(conn) {
-            const sendHandshake = () => {
-                if (conn.open) {
-                    const myKnownPeers = Object.keys(connections).filter(id => id !== conn.peer);
-                    conn.send({
-                        type: 'handshake',
-                        name: userData.name,
-                        knownPeers: myKnownPeers
-                    });
-                }
-            };
-
             conn.on('open', () => {
                 if (!connections[conn.peer]) {
                     connections[conn.peer] = conn;
-                    setTimeout(sendHandshake, 500);
-                    document.getElementById('welcome-message').classList.add('hidden');
+                    
+                    // Send identification + current mesh info
+                    setTimeout(() => {
+                        const known = Object.keys(connections).filter(id => id !== conn.peer);
+                        conn.send({
+                            type: 'handshake',
+                            name: userData.name,
+                            knownPeers: known
+                        });
+                    }, 500);
+                    
                     updateContactsUI();
                 }
             });
 
             conn.on('data', (data) => {
                 if (data.type === 'chat') {
+                    if (!hasMessages) hideWelcome();
                     renderMessage(data.sender, data.text, false);
                     document.getElementById('notif-sound').play().catch(()=>{});
                 } else if (data.type === 'handshake') {
                     peerNames[conn.peer] = data.name;
                     updateContactsUI();
                     
+                    // Mesh bridging
                     if (data.knownPeers) {
                         data.knownPeers.forEach(id => {
                             if (id !== userData.internalId && !connections[id]) {
-                                const newConn = peer.connect(id, { reliable: true });
-                                handleConnection(newConn);
+                                connectToPeerManually(id);
                             }
                         });
                     }
                 }
             });
 
-            const cleanup = () => {
-                if (connections[conn.peer]) {
-                    delete connections[conn.peer];
-                    delete peerNames[conn.peer];
-                    updateContactsUI();
-                }
+            const disconnect = () => {
+                delete connections[conn.peer];
+                delete peerNames[conn.peer];
+                updateContactsUI();
             };
 
-            conn.on('close', cleanup);
-            conn.on('error', cleanup);
+            conn.on('close', disconnect);
+            conn.on('error', disconnect);
+        }
+
+        function connectToPeerManually(id) {
+            const conn = peer.connect(id, { reliable: true });
+            handleConnection(conn);
+        }
+
+        function startHeartbeat() {
+            setInterval(() => {
+                if (peer.disconnected && !peer.destroyed) peer.reconnect();
+                Object.values(connections).forEach(c => {
+                    if (c.open) c.send({ type: 'hb' });
+                });
+            }, 5000);
         }
 
         function updateContactsUI() {
             const list = Object.keys(connections);
             document.getElementById('contact-count').innerText = list.length + 1;
             
-            // Clear but keep "You"
             contactsList.innerHTML = `
-                <div class="flex items-center gap-4 p-4 bg-blue-50/50 rounded-2xl border border-blue-200 mx-2 mb-2">
-                    <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-sm">You</div>
-                    <p class="text-sm font-bold text-blue-900 truncate">${userData.name}</p>
+                <div class="flex items-center gap-3 p-3 bg-blue-50 rounded-xl border border-blue-200">
+                    <div class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-xs">You</div>
+                    <p class="text-xs font-bold text-blue-900 truncate">${userData.name}</p>
                 </div>
             `;
 
             list.forEach(id => {
-                const name = peerNames[id] || 'Joining...';
+                const name = peerNames[id] || 'Connecting...';
                 const div = document.createElement('div');
-                div.className = "flex items-center gap-4 p-4 bg-white rounded-2xl border border-blue-100 shadow-sm animate-fade-in mx-2 mb-2";
+                div.className = "flex items-center gap-3 p-3 bg-white rounded-xl border border-blue-100 shadow-sm animate-fade-in";
                 div.innerHTML = `
-                    <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-black text-sm">
+                    <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-black text-xs">
                         ${name.charAt(0).toUpperCase()}
                     </div>
                     <div class="overflow-hidden">
-                        <p class="text-sm font-bold text-blue-900 truncate">${name}</p>
-                        <p class="text-[8px] font-mono text-blue-300 truncate tracking-tighter">${id}</p>
+                        <p class="text-xs font-bold text-blue-900 truncate">${name}</p>
+                        <p class="text-[7px] font-mono text-blue-300 truncate tracking-tighter">${id}</p>
                     </div>
                 `;
                 contactsList.appendChild(div);
@@ -379,26 +377,33 @@
             const text = input.value.trim();
             if (!text) return;
 
+            if (!hasMessages) hideWelcome();
+
             const payload = { type: 'chat', sender: userData.name, text: text };
-            Object.values(connections).forEach(conn => {
-                if (conn.open) conn.send(payload);
+            Object.values(connections).forEach(c => {
+                if (c.open) c.send(payload);
             });
 
             renderMessage('You', text, true);
             input.value = '';
         }
 
+        function hideWelcome() {
+            hasMessages = true;
+            welcomeMessage.classList.add('hidden');
+        }
+
         function renderMessage(sender, text, isMe) {
             const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const msgDiv = document.createElement('div');
-            msgDiv.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} space-y-1 w-full px-2`;
+            msgDiv.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} space-y-1 w-full`;
             
             msgDiv.innerHTML = `
-                <span class="text-[10px] font-black uppercase tracking-widest text-blue-400 px-4">${sender}</span>
-                <div class="message-bubble px-6 py-4 rounded-[2rem] shadow-sm ${isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-gray-100 text-blue-900 rounded-tl-none border border-blue-50'}">
-                    <p class="text-sm md:text-base font-medium">${escapeHTML(text)}</p>
+                <span class="text-[9px] font-black uppercase tracking-widest text-blue-400 px-2">${sender}</span>
+                <div class="message-bubble px-5 py-3 rounded-2xl shadow-sm ${isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-gray-100 text-blue-900 rounded-tl-none border border-blue-50'}">
+                    <p class="text-sm font-medium">${escapeHTML(text)}</p>
                 </div>
-                <span class="text-[9px] text-blue-300 px-4 font-bold opacity-70">${time}</span>
+                <span class="text-[8px] text-blue-300 px-2 font-bold opacity-70">${time}</span>
             `;
 
             messagesContainer.appendChild(msgDiv);
