@@ -3,418 +3,365 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ConnectChat | Room Edition</title>
-    <!-- Standard script imports -->
+    <title>ConnectChatPro | Safe and Secure</title>
+    <!-- PeerJS for P2P connections -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
-        body {
+        body, html {
             font-family: 'Inter', sans-serif;
-            background-color: #eff6ff;
+            background: #f8fafc;
+            color: #1e293b;
+            height: 100%;
+            width: 100%;
             margin: 0;
-            padding: 0;
             overflow: hidden;
         }
 
-        .message-bubble {
-            max-width: 85%;
-            word-wrap: break-word;
+        .full-screen-app {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
         }
 
-        .custom-scrollbar::-webkit-scrollbar {
+        .message-bubble {
+            max-width: 75%;
+            padding: 0.85rem 1.1rem;
+            border-radius: 1.25rem;
+            margin-bottom: 0.75rem;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .message-mine {
+            background-color: #2563eb;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 0.25rem;
+        }
+
+        .message-theirs {
+            background-color: white;
+            color: #334155;
+            align-self: flex-start;
+            border-bottom-left-radius: 0.25rem;
+            border: 1px solid #e2e8f0;
+        }
+
+        .custom-scroll::-webkit-scrollbar {
             width: 6px;
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #93c5fd;
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
             border-radius: 10px;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-            animation: fadeIn 0.3s ease-out forwards;
-        }
+        .hidden { display: none !important; }
 
-        .status-pulse {
-            animation: pulse 2s infinite;
+        .logo-bounce {
+            animation: float 3s ease-in-out infinite;
         }
-        @keyframes pulse {
-            0% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(1.1); }
-            100% { opacity: 1; transform: scale(1); }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
         }
     </style>
 </head>
-<body class="flex items-center justify-center h-screen w-screen">
+<body class="flex flex-col">
 
-    <!-- Auth / Login Screen -->
-    <div id="auth-screen" class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 animate-fade-in m-4 z-50 border border-blue-100">
-        <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-20 h-20 bg-blue-600 rounded-3xl mb-4 shadow-xl shadow-blue-200">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-            </div>
-            <h1 class="text-3xl font-extrabold text-blue-900 tracking-tight">ConnectChat</h1>
-            <p class="text-blue-500 font-medium mt-2">Private P2P Rooms</p>
-        </div>
-
-        <div class="space-y-5">
-            <div>
-                <label class="block text-sm font-bold text-blue-900 mb-1.5 ml-1">Your Name</label>
-                <input type="text" id="username" placeholder="Who are you?" class="w-full px-5 py-4 rounded-2xl border-2 border-blue-50 focus:border-blue-500 outline-none transition-all bg-blue-50/50 text-blue-900 placeholder-blue-300">
-            </div>
-            <div>
-                <label class="block text-sm font-bold text-blue-900 mb-1.5 ml-1">Room Name</label>
-                <input type="text" id="room-name" placeholder="e.g. gamers-club" class="w-full px-5 py-4 rounded-2xl border-2 border-blue-50 focus:border-blue-500 outline-none transition-all bg-blue-50/50 text-blue-900 placeholder-blue-300 font-mono">
-                <p class="text-[10px] text-blue-400 mt-2 ml-1">Enter a shared room name with friends.</p>
-            </div>
-            <button onclick="initSession()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-all transform active:scale-[0.98] shadow-lg shadow-blue-200 mt-4">
-                Join Room
-            </button>
-        </div>
-    </div>
-
-    <!-- Main Chat Screen -->
-    <div id="chat-screen" class="hidden w-screen h-screen bg-white flex flex-col overflow-hidden animate-fade-in">
-        <!-- Header -->
-        <div class="bg-blue-600 p-4 md:px-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg z-20">
-            <div class="flex items-center gap-4">
-                <div class="w-10 h-10 bg-blue-500/50 rounded-xl flex items-center justify-center border border-white/20 backdrop-blur-sm">
-                    <span id="user-initial" class="text-lg font-bold">?</span>
-                </div>
-                <div>
-                    <h2 id="display-name" class="font-bold text-base leading-tight">...</h2>
-                    <p class="text-blue-100 text-[9px] flex items-center gap-1.5 uppercase tracking-widest font-bold">
-                        <span id="status-indicator" class="w-2 h-2 bg-yellow-400 rounded-full status-pulse"></span>
-                        <span id="status-text">Booting...</span>
-                        <span class="mx-1 opacity-40">|</span>
-                        ROOM: <span id="my-room-display" class="font-mono bg-blue-800/50 px-2 py-0.5 rounded">...</span>
-                    </p>
-                </div>
-            </div>
-            
-            <!-- Connection Control -->
-            <div class="flex items-center gap-2">
-                <div class="relative flex-grow">
-                    <input type="text" id="target-peer-id" placeholder="Paste friend's Internal ID..." class="w-full md:w-64 bg-blue-700/50 border border-blue-400/30 rounded-xl px-4 py-2 text-xs placeholder-blue-300 outline-none focus:bg-blue-800 transition-all text-white font-mono">
-                </div>
-                <button onclick="connectToPeer()" class="bg-white text-blue-600 px-4 py-2 rounded-xl text-xs font-black hover:bg-blue-50 transition-all shadow-md active:scale-95 whitespace-nowrap">
-                    Connect
-                </button>
-            </div>
-
-            <div class="flex items-center gap-2 border-l border-blue-500 pl-4">
-                <div class="text-right">
-                    <p class="text-[8px] text-blue-200 font-bold uppercase">My Internal ID:</p>
-                    <p id="my-internal-id" class="text-[10px] font-mono text-white select-all cursor-pointer bg-blue-800/30 px-2 py-1 rounded">...</p>
-                </div>
-                <button onclick="copyMyId()" class="bg-blue-500/50 p-2 rounded-lg hover:bg-blue-500 transition-all border border-white/10">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+    <div class="full-screen-app flex-col md:flex-row">
+        
+        <!-- SIDEBAR -->
+        <aside class="w-full md:w-80 bg-white border-r border-slate-200 flex flex-col z-10 shadow-sm">
+            <div class="p-8 flex flex-col items-center border-b border-slate-50">
+                <div class="w-20 h-20 bg-blue-600 rounded-[1.8rem] flex items-center justify-center shadow-xl shadow-blue-100 mb-4 logo-bounce">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 12C14.2091 12 16 10.2091 16 8C16 5.79086 14.2091 4 12 4C9.79086 4 8 5.79086 8 8C8 10.2091 9.79086 12 12 12Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M12 15C8.13401 15 5 18.134 5 22H19C19 18.134 15.866 15 12 15Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M19 12C20.1046 12 21 11.1046 21 10C21 8.89543 20.1046 8 19 8C17.8954 8 17 8.89543 17 10C17 11.1046 17.8954 12 19 12Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+                        <path d="M5 12C6.10457 12 7 11.1046 7 10C7 8.89543 6.10457 8 5 8C3.89543 8 3 8.89543 3 10C3 11.1046 3.89543 12 5 12Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
                     </svg>
-                </button>
-            </div>
-        </div>
-
-        <div class="flex flex-grow overflow-hidden bg-blue-50/30">
-            <!-- Sidebar -->
-            <div class="hidden md:flex flex-col w-64 bg-white border-r border-blue-100 overflow-y-auto custom-scrollbar">
-                <div class="p-4 border-b border-blue-50 bg-white/80 backdrop-blur-md sticky top-0 z-10">
-                    <h3 class="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] flex items-center justify-between">
-                        Connected
-                        <span id="contact-count" class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full text-[9px]">1</span>
-                    </h3>
                 </div>
-                <div id="contacts-list" class="p-2 space-y-1">
-                    <div class="flex items-center gap-3 p-3 bg-blue-50 rounded-xl border border-blue-200">
-                        <div class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-xs">You</div>
-                        <p id="self-name-list" class="text-xs font-bold text-blue-900 truncate">...</p>
+                <h1 class="text-xl font-bold text-blue-600 tracking-tight">ConnectChat<span class="text-slate-800">Pro</span></h1>
+            </div>
+
+            <div class="flex-1 p-6 space-y-6">
+                <div class="space-y-2">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Status</label>
+                    <div class="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <div id="status-dot" class="w-2.5 h-2.5 rounded-full bg-slate-300"></div>
+                        <span id="status-text" class="text-sm font-medium">Offline</span>
+                    </div>
+                </div>
+
+                <div id="room-info-box" class="space-y-2 hidden">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Space Details</label>
+                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                        <div class="text-blue-900 font-bold" id="side-space-name">-</div>
+                        <div class="text-blue-600 text-xs mt-1">Direct P2P Link Active</div>
+                    </div>
+                    <div class="pt-2">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Participants</label>
+                        <ul id="peer-list" class="mt-2 space-y-1">
+                            <li class="text-xs text-slate-600 flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> You (Online)
+                            </li>
+                        </ul>
                     </div>
                 </div>
             </div>
 
-            <!-- Chat Area -->
-            <div class="flex flex-col flex-grow bg-white relative">
-                <div id="messages-container" class="flex-grow p-4 md:p-6 overflow-y-auto custom-scrollbar space-y-4">
-                    <div id="welcome-message" class="max-w-md mx-auto text-center py-20 animate-fade-in">
-                        <div class="bg-blue-50 text-blue-600 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-inner">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
-                        </div>
-                        <h3 class="text-xl font-black text-blue-900">Room Ready</h3>
-                        <p class="text-xs text-blue-500 mt-2 px-6">1. Copy your <b>Internal ID</b>.<br>2. Send it to a friend.<br>3. They paste it in the box above and click <b>Connect</b>.</p>
+            <div class="p-6 border-t border-slate-100 text-[10px] text-slate-400 text-center">
+                Securely connected via WebRTC
+            </div>
+        </aside>
+
+        <!-- MAIN -->
+        <main class="flex-1 flex flex-col relative bg-slate-50">
+            
+            <!-- LOGIN SCREEN -->
+            <div id="setup-screen" class="absolute inset-0 z-20 bg-slate-50 flex items-center justify-center p-6">
+                <div class="w-full max-w-md bg-white p-10 rounded-[2.5rem] shadow-2xl border border-slate-100 space-y-6">
+                    <div class="text-center">
+                        <h2 class="text-3xl font-bold text-slate-800">Welcome</h2>
+                        <p class="text-slate-500 mt-2">Enter your name and space info.</p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <input type="text" id="user-name" placeholder="Your Name" class="w-full p-4 rounded-2xl bg-slate-50 ring-1 ring-slate-200 focus:ring-2 focus:ring-blue-500 outline-none">
+                        <input type="text" id="space-name" placeholder="Space Name (e.g. MySecretClub)" class="w-full p-4 rounded-2xl bg-slate-50 ring-1 ring-slate-200 focus:ring-2 focus:ring-blue-500 outline-none">
+                        <input type="password" id="space-pass" placeholder="Space Password" class="w-full p-4 rounded-2xl bg-slate-50 ring-1 ring-slate-200 focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="enterSpace(true)" class="bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100">Create</button>
+                        <button onclick="enterSpace(false)" class="bg-slate-800 text-white py-4 rounded-2xl font-bold hover:bg-slate-900 transition-all">Join</button>
+                    </div>
+
+                    <div id="error-msg" class="text-center text-xs text-red-500 font-medium"></div>
+                </div>
+            </div>
+
+            <!-- CHAT AREA -->
+            <div id="chat-screen" class="hidden flex-1 flex flex-col h-full overflow-hidden">
+                <div id="messages" class="flex-1 p-6 md:p-10 overflow-y-auto flex flex-col custom-scroll bg-slate-50">
+                    <div class="text-center my-6">
+                        <span class="px-4 py-2 rounded-full bg-white border border-slate-200 text-[10px] text-slate-400 font-bold uppercase tracking-widest">Secure Room Connected</span>
                     </div>
                 </div>
 
-                <!-- Input Area -->
-                <div class="p-4 bg-white border-t border-blue-50">
-                    <div class="max-w-4xl mx-auto">
-                        <form id="chat-form" onsubmit="sendMessage(event)" class="flex gap-2">
-                            <input type="text" id="message-input" placeholder="Type a message..." class="flex-grow px-5 py-3 bg-blue-50/50 rounded-xl border border-transparent focus:border-blue-600 focus:bg-white outline-none transition-all text-sm text-blue-900" autocomplete="off">
-                            <button type="submit" class="bg-blue-600 text-white px-6 rounded-xl hover:bg-blue-700 transition-all transform active:scale-95 shadow-md">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                                </svg>
-                            </button>
-                        </form>
+                <div class="p-6 md:p-8 bg-white border-t border-slate-200">
+                    <div class="max-w-4xl mx-auto flex items-center gap-4 bg-slate-100 p-2 rounded-[2rem] border border-slate-200 focus-within:ring-2 ring-blue-500 transition-all">
+                        <input type="text" id="msg-input" placeholder="Type a message..." class="flex-1 bg-transparent border-none outline-none px-6 py-2 text-slate-700">
+                        <button onclick="sendChat()" class="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                        </button>
                     </div>
                 </div>
             </div>
-        </div>
+
+        </main>
     </div>
-
-    <audio id="notif-sound" src="https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3" preload="auto"></audio>
 
     <script>
         let peer;
-        let connections = {}; 
-        let peerNames = {}; 
-        let userData = { name: '', room: '', internalId: '' };
-        let hasMessages = false;
+        let connections = [];
+        let myName = "";
+        let roomName = "";
+        let roomPass = "";
 
-        const authScreen = document.getElementById('auth-screen');
-        const chatScreen = document.getElementById('chat-screen');
-        const messagesContainer = document.getElementById('messages-container');
-        const contactsList = document.getElementById('contacts-list');
-        const welcomeMessage = document.getElementById('welcome-message');
+        // Function to play a satisfying "pop" notification sound
+        function playNotificationSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
 
-        function initSession() {
-            userData.name = document.getElementById('username').value.trim();
-            const rawRoom = document.getElementById('room-name').value.trim().toLowerCase().replace(/\s+/g, '-');
-            
-            if (!userData.name || !rawRoom) {
-                alert("Please enter your name and a room name!");
+                oscillator.type = 'sine';
+                // A quick upward sweep for a "satisfying" feel
+                oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1);
+
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.15);
+            } catch (e) {
+                console.log("Audio play blocked or unsupported:", e);
+            }
+        }
+
+        async function enterSpace(isCreating) {
+            myName = document.getElementById('user-name').value.trim();
+            roomName = document.getElementById('space-name').value.trim();
+            roomPass = document.getElementById('space-pass').value.trim();
+            const errorEl = document.getElementById('error-msg');
+
+            if (!myName || !roomName || !roomPass) {
+                errorEl.innerText = "Please fill in all fields.";
                 return;
             }
 
-            userData.room = rawRoom;
-            // PeerJS ID must be alphanumeric/dashes/underscores
-            userData.internalId = `cc-${userData.room}-${Math.random().toString(36).substr(2, 6)}`;
-            createPeer();
-        }
+            const roomId = "ccpro-" + btoa(roomName).substring(0, 12).toLowerCase();
 
-        function createPeer() {
-            peer = new Peer(userData.internalId, {
-                debug: 1,
-                config: {
-                    iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' },
-                        { urls: 'stun:stun2.l.google.com:19302' },
-                        { urls: 'stun:stun3.l.google.com:19302' }
-                    ]
-                }
-            });
-
-            peer.on('open', (id) => {
-                updateUIStatus(true);
-                authScreen.classList.add('hidden');
-                chatScreen.classList.remove('hidden');
+            if (isCreating) {
+                peer = new Peer(roomId);
                 
-                document.getElementById('display-name').innerText = userData.name;
-                document.getElementById('self-name-list').innerText = userData.name;
-                document.getElementById('my-room-display').innerText = userData.room;
-                document.getElementById('my-internal-id').innerText = id;
-                document.getElementById('user-initial').innerText = userData.name.charAt(0).toUpperCase();
-                
-                startHeartbeat();
-            });
+                peer.on('open', (id) => {
+                    setupChatUI();
+                    updateStatus("Hosting Space", "bg-green-500");
+                });
 
-            peer.on('connection', handleConnection);
+                peer.on('error', (err) => {
+                    if (err.type === 'unavailable-id') {
+                        errorEl.innerText = "This space name is already being hosted. Try 'Join' instead.";
+                    } else {
+                        errorEl.innerText = "Connection error: " + err.type;
+                    }
+                });
 
-            peer.on('error', (err) => {
-                console.error("Peer Error:", err.type);
-                if (err.type === 'peer-unavailable') {
-                    alert("Could not find that person. Make sure they are online and their ID is correct!");
-                }
-            });
+                peer.on('connection', (conn) => {
+                    handleIncomingConnection(conn);
+                });
 
-            peer.on('disconnected', () => {
-                updateUIStatus(false);
-                peer.reconnect();
-            });
-        }
-
-        function copyMyId() {
-            const id = userData.internalId;
-            const dummy = document.createElement("textarea");
-            document.body.appendChild(dummy);
-            dummy.value = id;
-            dummy.select();
-            document.execCommand("copy");
-            document.body.removeChild(dummy);
-            
-            const btn = event.currentTarget;
-            const originalColor = btn.style.backgroundColor;
-            btn.style.backgroundColor = "#10b981"; // Green
-            setTimeout(() => btn.style.backgroundColor = originalColor, 1000);
-        }
-
-        function updateUIStatus(online) {
-            const indicator = document.getElementById('status-indicator');
-            const statusTxt = document.getElementById('status-text');
-            if (online) {
-                indicator.className = "w-2 h-2 bg-green-400 rounded-full shadow-[0_0_8px_rgba(74,222,128,0.6)]";
-                statusTxt.innerText = "Network Active";
             } else {
-                indicator.className = "w-2 h-2 bg-red-400 rounded-full status-pulse";
-                statusTxt.innerText = "Connecting...";
+                peer = new Peer();
+                
+                peer.on('open', (id) => {
+                    const conn = peer.connect(roomId, {
+                        metadata: { senderName: myName, password: roomPass }
+                    });
+                    handleOutgoingConnection(conn);
+                });
+
+                peer.on('error', (err) => {
+                    errorEl.innerText = "Could not find space. Make sure the host has created it.";
+                });
             }
         }
 
-        function connectToPeer() {
-            const targetId = document.getElementById('target-peer-id').value.trim();
-            if (!targetId || targetId === userData.internalId || connections[targetId]) return;
-            
-            const conn = peer.connect(targetId, { reliable: true });
-            handleConnection(conn);
-            document.getElementById('target-peer-id').value = '';
+        function setupChatUI() {
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('chat-screen').classList.remove('hidden');
+            document.getElementById('room-info-box').classList.remove('hidden');
+            document.getElementById('side-space-name').innerText = roomName;
         }
 
-        function handleConnection(conn) {
+        function updateStatus(text, color) {
+            document.getElementById('status-dot').className = `w-2.5 h-2.5 rounded-full ${color}`;
+            document.getElementById('status-text').innerText = text;
+        }
+
+        function handleIncomingConnection(conn) {
             conn.on('open', () => {
-                if (!connections[conn.peer]) {
-                    connections[conn.peer] = conn;
-                    
-                    // Send identification + current mesh info
-                    setTimeout(() => {
-                        const known = Object.keys(connections).filter(id => id !== conn.peer);
-                        conn.send({
-                            type: 'handshake',
-                            name: userData.name,
-                            knownPeers: known
-                        });
-                    }, 500);
-                    
-                    updateContactsUI();
+                if (conn.metadata.password !== roomPass) {
+                    conn.send({ type: 'system', content: 'WRONG_PASS' });
+                    setTimeout(() => conn.close(), 500);
+                    return;
                 }
+                
+                connections.push(conn);
+                addMessage("System", `${conn.metadata.senderName} joined the space.`, false);
+                playNotificationSound();
+                updatePeerList();
+                
+                conn.on('data', (data) => processData(data, conn));
+                conn.on('close', () => removeConnection(conn));
             });
+        }
 
+        function handleOutgoingConnection(conn) {
             conn.on('data', (data) => {
-                if (data.type === 'chat') {
-                    if (!hasMessages) hideWelcome();
-                    renderMessage(data.sender, data.text, false);
-                    document.getElementById('notif-sound').play().catch(()=>{});
-                } else if (data.type === 'handshake') {
-                    peerNames[conn.peer] = data.name;
-                    updateContactsUI();
-                    
-                    // Mesh bridging
-                    if (data.knownPeers) {
-                        data.knownPeers.forEach(id => {
-                            if (id !== userData.internalId && !connections[id]) {
-                                connectToPeerManually(id);
-                            }
-                        });
-                    }
+                if (data.type === 'system' && data.content === 'WRONG_PASS') {
+                    document.getElementById('error-msg').innerText = "Incorrect Password for this space.";
+                    document.getElementById('setup-screen').classList.remove('hidden');
+                    document.getElementById('chat-screen').classList.add('hidden');
+                    peer.destroy();
+                } else {
+                    processData(data, conn);
                 }
             });
 
-            const disconnect = () => {
-                delete connections[conn.peer];
-                delete peerNames[conn.peer];
-                updateContactsUI();
-            };
+            conn.on('open', () => {
+                connections.push(conn);
+                setupChatUI();
+                updateStatus("Connected", "bg-green-500");
+                addMessage("System", `Connected to ${roomName}.`, false);
+                playNotificationSound();
+                updatePeerList();
+            });
 
-            conn.on('close', disconnect);
-            conn.on('error', disconnect);
-        }
-
-        function connectToPeerManually(id) {
-            const conn = peer.connect(id, { reliable: true });
-            handleConnection(conn);
-        }
-
-        function startHeartbeat() {
-            setInterval(() => {
-                if (peer.disconnected && !peer.destroyed) peer.reconnect();
-                Object.values(connections).forEach(c => {
-                    if (c.open) c.send({ type: 'hb' });
-                });
-            }, 5000);
-        }
-
-        function updateContactsUI() {
-            const list = Object.keys(connections);
-            document.getElementById('contact-count').innerText = list.length + 1;
-            
-            contactsList.innerHTML = `
-                <div class="flex items-center gap-3 p-3 bg-blue-50 rounded-xl border border-blue-200">
-                    <div class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-xs">You</div>
-                    <p class="text-xs font-bold text-blue-900 truncate">${userData.name}</p>
-                </div>
-            `;
-
-            list.forEach(id => {
-                const name = peerNames[id] || 'Connecting...';
-                const div = document.createElement('div');
-                div.className = "flex items-center gap-3 p-3 bg-white rounded-xl border border-blue-100 shadow-sm animate-fade-in";
-                div.innerHTML = `
-                    <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-black text-xs">
-                        ${name.charAt(0).toUpperCase()}
-                    </div>
-                    <div class="overflow-hidden">
-                        <p class="text-xs font-bold text-blue-900 truncate">${name}</p>
-                        <p class="text-[7px] font-mono text-blue-300 truncate tracking-tighter">${id}</p>
-                    </div>
-                `;
-                contactsList.appendChild(div);
+            conn.on('close', () => {
+                addMessage("System", "Disconnected from space.", false);
+                setTimeout(() => location.reload(), 2000);
             });
         }
 
-        function sendMessage(e) {
-            e.preventDefault();
-            const input = document.getElementById('message-input');
+        function processData(data, fromConn) {
+            if (data.type === 'chat') {
+                addMessage(data.sender, data.content, false);
+                playNotificationSound();
+            }
+        }
+
+        function removeConnection(conn) {
+            connections = connections.filter(c => c !== conn);
+            addMessage("System", "Someone left the space.", false);
+            updatePeerList();
+        }
+
+        function updatePeerList() {
+            const list = document.getElementById('peer-list');
+            list.innerHTML = `<li class="text-xs text-slate-600 flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> You (Online)</li>`;
+            connections.forEach(c => {
+                const name = c.metadata ? c.metadata.senderName : "Peer";
+                list.innerHTML += `<li class="text-xs text-slate-600 flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span> ${name}</li>`;
+            });
+        }
+
+        function sendChat() {
+            const input = document.getElementById('msg-input');
             const text = input.value.trim();
-            if (!text) return;
+            if (!text || (connections.length === 0 && !peer.id.startsWith('ccpro-'))) return;
 
-            if (!hasMessages) hideWelcome();
-
-            const payload = { type: 'chat', sender: userData.name, text: text };
-            Object.values(connections).forEach(c => {
-                if (c.open) c.send(payload);
+            connections.forEach(conn => {
+                conn.send({ type: 'chat', sender: myName, content: text });
             });
 
-            renderMessage('You', text, true);
-            input.value = '';
+            addMessage(myName, text, true);
+            input.value = "";
         }
 
-        function hideWelcome() {
-            hasMessages = true;
-            welcomeMessage.classList.add('hidden');
-        }
-
-        function renderMessage(sender, text, isMe) {
-            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const msgDiv = document.createElement('div');
-            msgDiv.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} space-y-1 w-full`;
+        function addMessage(sender, text, isMine) {
+            const container = document.getElementById('messages');
+            const div = document.createElement('div');
+            div.className = `message-bubble ${isMine ? 'message-mine' : 'message-theirs'}`;
             
-            msgDiv.innerHTML = `
-                <span class="text-[9px] font-black uppercase tracking-widest text-blue-400 px-2">${sender}</span>
-                <div class="message-bubble px-5 py-3 rounded-2xl shadow-sm ${isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-gray-100 text-blue-900 rounded-tl-none border border-blue-50'}">
-                    <p class="text-sm font-medium">${escapeHTML(text)}</p>
-                </div>
-                <span class="text-[8px] text-blue-300 px-2 font-bold opacity-70">${time}</span>
-            `;
+            const nameSpan = document.createElement('div');
+            nameSpan.className = 'text-[9px] opacity-70 mb-1 font-bold uppercase tracking-widest';
+            nameSpan.innerText = sender;
+            
+            const textDiv = document.createElement('div');
+            textDiv.innerText = text;
 
-            messagesContainer.appendChild(msgDiv);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            div.appendChild(nameSpan);
+            div.appendChild(textDiv);
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
         }
 
-        function escapeHTML(str) {
-            const p = document.createElement('p');
-            p.textContent = str;
-            return p.innerHTML;
-        }
+        document.getElementById('msg-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendChat();
+        });
     </script>
 </body>
 </html>
