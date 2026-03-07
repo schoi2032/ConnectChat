@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ConnectChatPro | Safe & Secure</title>
     
-    <!-- Favicon: This makes the logo appear on the browser tab -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232563eb'%3E%3Cpath d='M12 2C6.477 2 2 6.14 2 11.25c0 2.858 1.423 5.41 3.656 7.081-.243.916-.906 2.394-2.156 3.419 0 0 2.5-.25 4.5-1.5a11.162 11.162 0 0 0 4 .75c5.523 0 10-4.14 10-9.25S17.523 2 12 2z'/%3E%3C/svg%3E">
+    <!-- Favicon: Updated to match the new cool logo -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%233b82f6'/%3E%3Cstop offset='100%25' style='stop-color:%232563eb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M12 2C6.477 2 2 6.14 2 11.25c0 2.858 1.423 5.41 3.656 7.081-.243.916-.906 2.394-2.156 3.419 0 0 2.5-.25 4.5-1.5a11.162 11.162 0 0 0 4 .75c5.523 0 10-4.14 10-9.25S17.523 2 12 2z' fill='url(%23g)'/%3E%3Cpath d='M8 11h.01M12 11h.01M16 11h.01' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
 
     <!-- PeerJS for P2P connections -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -42,7 +42,7 @@
         }
 
         .message-mine {
-            background-color: #2563eb;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
             color: white;
             align-self: flex-end;
             border-bottom-right-radius: 0.25rem;
@@ -66,13 +66,33 @@
 
         .hidden { display: none !important; }
 
-        .logo-bounce {
-            animation: float 3s ease-in-out infinite;
+        /* Cooler Logo Animations */
+        .logo-container {
+            position: relative;
+            transition: transform 0.3s ease;
+        }
+        .logo-container:hover {
+            transform: scale(1.05);
+        }
+        .logo-pulse {
+            position: absolute;
+            inset: 0;
+            background: #3b82f6;
+            border-radius: 1.8rem;
+            opacity: 0.2;
+            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.2; }
+            50% { transform: scale(1.1); opacity: 0.1; }
+            100% { transform: scale(0.95); opacity: 0.2; }
+        }
+        .logo-float {
+            animation: float 4s ease-in-out infinite;
         }
         @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-            100% { transform: translateY(0px); }
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
         }
     </style>
 </head>
@@ -83,13 +103,21 @@
         <!-- SIDEBAR -->
         <aside class="w-full md:w-80 bg-white border-r border-slate-200 flex flex-col z-10 shadow-sm">
             <div class="p-8 flex flex-col items-center border-b border-slate-50">
-                <!-- NEW LOGO: Speech Bubble Design -->
-                <div class="w-20 h-20 bg-blue-600 rounded-[1.8rem] flex items-center justify-center shadow-xl shadow-blue-100 mb-4 logo-bounce">
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 2C6.477 2 2 6.14 2 11.25c0 2.858 1.423 5.41 3.656 7.081-.243.916-.906 2.394-2.156 3.419 0 0 2.5-.25 4.5-1.5a11.162 11.162 0 0 0 4 .75c5.523 0 10-4.14 10-9.25S17.523 2 12 2z" />
-                    </svg>
+                <!-- NEW COOLER LOGO -->
+                <div class="logo-container logo-float">
+                    <div class="logo-pulse"></div>
+                    <div class="relative w-20 h-20 bg-gradient-to-br from-blue-400 to-blue-700 rounded-[1.8rem] flex items-center justify-center shadow-2xl shadow-blue-200 mb-4 overflow-hidden">
+                        <!-- Abstract Glass Effect -->
+                        <div class="absolute top-0 left-0 w-full h-1/2 bg-white/10 -skew-y-12 transform origin-top-left"></div>
+                        <svg width="42" height="42" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2C6.477 2 2 6.14 2 11.25c0 2.858 1.423 5.41 3.656 7.081-.243.916-.906 2.394-2.156 3.419 0 0 2.5-.25 4.5-1.5a11.162 11.162 0 0 0 4 .75c5.523 0 10-4.14 10-9.25S17.523 2 12 2z" fill="white" />
+                            <circle cx="8" cy="11" r="1.5" fill="#3b82f6" fill-opacity="0.8"/>
+                            <circle cx="12" cy="11" r="1.5" fill="#3b82f6" fill-opacity="0.8"/>
+                            <circle cx="16" cy="11" r="1.5" fill="#3b82f6" fill-opacity="0.8"/>
+                        </svg>
+                    </div>
                 </div>
-                <h1 class="text-xl font-bold text-blue-600 tracking-tight">ConnectChat<span class="text-slate-800">Pro</span></h1>
+                <h1 class="text-xl font-bold text-blue-600 tracking-tight mt-2">ConnectChat<span class="text-slate-800">Pro</span></h1>
             </div>
 
             <div class="flex-1 p-6 space-y-6">
