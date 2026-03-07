@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ConnectChatPro | Safe Secure</title>
+    <title>ConnectChatPro | Safe & Secure</title>
+    
+    <!-- Favicon: This makes the logo appear on the browser tab -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232563eb'%3E%3Cpath d='M12 2C6.477 2 2 6.14 2 11.25c0 2.858 1.423 5.41 3.656 7.081-.243.916-.906 2.394-2.156 3.419 0 0 2.5-.25 4.5-1.5a11.162 11.162 0 0 0 4 .75c5.523 0 10-4.14 10-9.25S17.523 2 12 2z'/%3E%3C/svg%3E">
+
     <!-- PeerJS for P2P connections -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <!-- Tailwind CSS for styling -->
@@ -79,12 +83,10 @@
         <!-- SIDEBAR -->
         <aside class="w-full md:w-80 bg-white border-r border-slate-200 flex flex-col z-10 shadow-sm">
             <div class="p-8 flex flex-col items-center border-b border-slate-50">
+                <!-- NEW LOGO: Speech Bubble Design -->
                 <div class="w-20 h-20 bg-blue-600 rounded-[1.8rem] flex items-center justify-center shadow-xl shadow-blue-100 mb-4 logo-bounce">
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 12C14.2091 12 16 10.2091 16 8C16 5.79086 14.2091 4 12 4C9.79086 4 8 5.79086 8 8C8 10.2091 9.79086 12 12 12Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M12 15C8.13401 15 5 18.134 5 22H19C19 18.134 15.866 15 12 15Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M19 12C20.1046 12 21 11.1046 21 10C21 8.89543 20.1046 8 19 8C17.8954 8 17 8.89543 17 10C17 11.1046 17.8954 12 19 12Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
-                        <path d="M5 12C6.10457 12 7 11.1046 7 10C7 8.89543 6.10457 8 5 8C3.89543 8 3 8.89543 3 10C3 11.1046 3.89543 12 5 12Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C6.477 2 2 6.14 2 11.25c0 2.858 1.423 5.41 3.656 7.081-.243.916-.906 2.394-2.156 3.419 0 0 2.5-.25 4.5-1.5a11.162 11.162 0 0 0 4 .75c5.523 0 10-4.14 10-9.25S17.523 2 12 2z" />
                     </svg>
                 </div>
                 <h1 class="text-xl font-bold text-blue-600 tracking-tight">ConnectChat<span class="text-slate-800">Pro</span></h1>
@@ -276,8 +278,6 @@
 
         function handleOutgoingConnection(conn) {
             conn.on('open', () => {
-                // Connection opened, but we wait for password validation via system messages or successful data flow
-                // In PeerJS, if metadata matches on host side, we're good
                 connections.push(conn);
                 setupChatUI();
                 updateStatus("Connected", "bg-green-500");
@@ -289,7 +289,6 @@
             conn.on('data', (data) => {
                 if (data.type === 'system' && data.content === 'WRONG_PASS') {
                     document.getElementById('error-msg').innerText = "Incorrect Password for this space.";
-                    // Switch back to setup if failed
                     document.getElementById('setup-screen').classList.remove('hidden');
                     document.getElementById('chat-screen').classList.add('hidden');
                     peer.destroy();
@@ -329,7 +328,6 @@
         function sendChat() {
             const input = document.getElementById('msg-input');
             const text = input.value.trim();
-            // Allow sending if connected to at least one peer OR if you are the host (id starts with ccpro-)
             if (!text || (connections.length === 0 && !peer.id.startsWith('ccpro-'))) return;
 
             connections.forEach(conn => {
